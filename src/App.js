@@ -1,5 +1,7 @@
-import './index.css';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Plus, User, Bell, Heart, ShoppingBag, ChevronDown, LogOut, LayoutDashboard, Shield, X, Menu } from 'lucide-react';
+import './index.css';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useToast, ToastContainer } from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -17,6 +19,14 @@ function AppInner() {
   const [showCreate, setShowCreate] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [scrolled, setScrolled] = useState(false);
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 40 && !scrolled) setScrolled(true);
+      if (window.scrollY <= 40 && scrolled) setScrolled(false);
+    }, { passive: true });
+  }
 
   function nav(p) { setPage(p); setMenuOpen(false); window.scrollTo(0, 0); }
 
@@ -28,164 +38,206 @@ function AppInner() {
   function handleSignOut() {
     signOut();
     nav('home');
-    addToast('✅ Déconnexion réussie', 'success');
+    addToast('Déconnexion réussie', 'success');
   }
 
   const initials = (profile?.nom || user?.email || '?').slice(0, 2).toUpperCase();
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16, background: 'var(--bg)' }}>
-        <img src="/logokb.png" alt="Konab Marcket" style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'contain', background: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', marginBottom: 8 }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 20, background: 'var(--bg)' }}>
+        <motion.img
+          src="/logokb.png" alt="Konab Marcket"
+          style={{ width: 60, height: 60, borderRadius: 16, objectFit: 'contain', background: 'white', padding: 4 }}
+          animate={{ scale: [1, 1.05, 1], opacity: [0.8, 1, 0.8] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        />
         <div className="spinner" />
-        <div style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, marginTop: 8 }}>KonabMarcket — Chargement...</div>
+        <div style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>Konab Marcket — Chargement...</div>
       </div>
     );
   }
 
   return (
     <div>
-      {/* ===== NAVBAR ===== */}
-      <nav className="navbar">
+      <motion.nav
+        className={`navbar ${scrolled ? 'scrolled' : ''}`}
+        initial={{ y: -80 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+      >
         <div className="navbar-inner">
-          {/* Logo */}
-          <div className="navbar-logo" onClick={() => nav('home')}>
-            <img src="/logokb.png" alt="Konab Marcket" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: 'white' }} />
+          <motion.div className="navbar-logo" onClick={() => nav('home')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <img src="/logokb.png" alt="Konab Marcket" className="logo-img" />
             <div className="logo-text">
               <span className="logo-name">Konab Marcket</span>
-              <span className="logo-tagline">🇧🇫 Marketplace</span>
+              <span className="logo-tagline">Achetez mieux • Vendez plus</span>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Search — desktop seulement */}
           <div className="navbar-center">
             <div className="navbar-search">
-              <input placeholder="Rechercher sur KonabMarcket..."
+              <Search size={16} style={{ marginLeft: 14, color: 'var(--text3)', flexShrink: 0 }} />
+              <input placeholder="Rechercher produits, services, catégories..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { nav('home'); } }}
               />
-              <button onClick={() => { setSearchQuery(searchQuery); nav('home'); }}>🔍</button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { setSearchQuery(searchQuery); nav('home'); }}
+              >
+                <Search size={18} />
+              </motion.button>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="navbar-actions">
-            <button className="btn btn-rouge btn-sm" onClick={handleCreateClick}>
-              ➕ <span style={{ display: 'none' }} className="hide-sm">Publier</span>
+            <motion.button className="btn btn-primary btn-sm"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleCreateClick}
+            >
+              <Plus size={16} />
               <span>Publier</span>
-            </button>
+            </motion.button>
 
             {user ? (
               <div style={{ position: 'relative' }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setMenuOpen(m => !m)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,var(--rouge),var(--vert))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: 'white', flexShrink: 0 }}>
-                    {initials}
-                  </div>
-                  <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {profile?.nom?.split(' ')[0] || 'Compte'}
-                  </span>
-                  <span style={{ fontSize: 10 }}>▾</span>
-                </button>
+                <motion.button className="nav-icon-btn"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setMenuOpen(m => !m)}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 800 }}>{initials}</span>
+                </motion.button>
 
-                {menuOpen && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 399 }} onClick={() => setMenuOpen(false)} />
-                    <div className="dropdown-menu">
-                      <div className="dropdown-header">{user.email}</div>
-                      {profile?.abonnement && profile.abonnement !== 'basic' && (
-                        <div style={{ padding: '4px 16px 10px' }}>
-                          <span className="badge badge-gold">⭐ {profile.abonnement === 'certified' ? 'Certifié' : 'Premium'}</span>
-                        </div>
-                      )}
-                      <div className="dropdown-separator" />
-                      <button className="dropdown-item" onClick={() => nav('dashboard')}>
-                        📋 Mon tableau de bord
-                      </button>
-                      <button className="dropdown-item" onClick={handleCreateClick}>
-                        ➕ Publier une annonce
-                      </button>
-                      {isAdmin && (
-                        <>
-                          <div className="dropdown-separator" />
-                          <button className="dropdown-item danger" onClick={() => nav('admin')}>
-                            🛡️ Administration
-                          </button>
-                        </>
-                      )}
-                      <div className="dropdown-separator" />
-                      <button className="dropdown-item" onClick={handleSignOut} style={{ color: 'var(--text2)' }}>
-                        🚪 Déconnexion
-                      </button>
-                    </div>
-                  </>
-                )}
+                <AnimatePresence>
+                  {menuOpen && (
+                    <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 399 }} onClick={() => setMenuOpen(false)} />
+                      <motion.div className="dropdown-menu"
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        <div className="dropdown-header">{user.email}</div>
+                        {profile?.abonnement && profile.abonnement !== 'basic' && (
+                          <div style={{ padding: '4px 18px 10px' }}>
+                            <span className="badge badge-gold">
+                              {profile.abonnement === 'certified' ? 'Certifié' : 'Premium'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="dropdown-separator" />
+                        <button className="dropdown-item" onClick={() => nav('dashboard')}>
+                          <LayoutDashboard size={16} /> Mon tableau de bord
+                        </button>
+                        <button className="dropdown-item" onClick={handleCreateClick}>
+                          <Plus size={16} /> Publier une annonce
+                        </button>
+                        {isAdmin && (
+                          <>
+                            <div className="dropdown-separator" />
+                            <button className="dropdown-item danger" onClick={() => nav('admin')}>
+                              <Shield size={16} /> Administration
+                            </button>
+                          </>
+                        )}
+                        <div className="dropdown-separator" />
+                        <button className="dropdown-item" onClick={handleSignOut} style={{ color: 'var(--text2)' }}>
+                          <LogOut size={16} /> Déconnexion
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
-              <button className="btn btn-outline-blanc btn-sm" onClick={() => setShowAuth(true)}>
-                🔐 Connexion
-              </button>
+              <motion.button className="btn btn-ghost btn-sm"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowAuth(true)}
+              >
+                <User size={16} /> Connexion
+              </motion.button>
             )}
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
-      {/* ===== PAGES ===== */}
-      <div className="page-enter" key={page}>
-        {page === 'home'      && <HomePage key={searchQuery} searchQuery={searchQuery} onShowAuth={() => setShowAuth(true)} onShowCreate={handleCreateClick} />}
-        {page === 'dashboard' && user    && <DashboardPage onShowCreate={() => setShowCreate(true)} />}
-        {page === 'admin'     && isAdmin && <AdminPage />}
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={page}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+          {page === 'home'      && <HomePage key={searchQuery} searchQuery={searchQuery} onShowAuth={() => setShowAuth(true)} onShowCreate={handleCreateClick} />}
+          {page === 'dashboard' && user    && <DashboardPage onShowCreate={() => setShowCreate(true)} />}
+          {page === 'admin'     && isAdmin && <AdminPage />}
+        </motion.div>
+      </AnimatePresence>
 
-      {/* ===== BOTTOM NAV MOBILE ===== */}
       <div className="bottom-nav">
         <div className="bottom-nav-inner">
           <button className={`bnav-item ${page === 'home' ? 'active' : ''}`} onClick={() => nav('home')}>
-            <span className="bnav-icon">🏠</span>
+            <ShoppingBag size={20} className="bnav-icon" />
             Accueil
           </button>
           <button className={`bnav-item ${page === 'home' && searchQuery ? 'active' : ''}`} onClick={() => nav('home')}>
-            <span className="bnav-icon">🔍</span>
+            <Search size={20} className="bnav-icon" />
             Chercher
           </button>
           <button className="bnav-item publish" onClick={handleCreateClick}>
-            <div className="bnav-pub-btn">➕</div>
+            <div className="bnav-pub-btn"><Plus size={24} /></div>
             Publier
           </button>
           {user ? (
             <button className={`bnav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => nav('dashboard')}>
-              <span className="bnav-icon">📋</span>
+              <LayoutDashboard size={20} className="bnav-icon" />
               Mes annonces
             </button>
           ) : (
             <button className="bnav-item" onClick={() => setShowAuth(true)}>
-              <span className="bnav-icon">🔐</span>
+              <User size={20} className="bnav-icon" />
               Connexion
             </button>
           )}
           {isAdmin ? (
             <button className={`bnav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => nav('admin')}>
-              <span className="bnav-icon">🛡️</span>
+              <Shield size={20} className="bnav-icon" />
               Admin
             </button>
           ) : user ? (
             <button className="bnav-item" onClick={() => nav('dashboard')}>
-              <span className="bnav-icon">👤</span>
+              <User size={20} className="bnav-icon" />
               Profil
             </button>
           ) : null}
         </div>
       </div>
 
-      {/* ===== MODALS ===== */}
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
-      {showCreate && user && (
-        <AnnonceModal
-          onClose={() => setShowCreate(false)}
-          onSaved={() => { setShowCreate(false); addToast('🎉 Annonce publiée avec succès !', 'success'); }}
-        />
-      )}
+      <AnimatePresence>
+        {showAuth && (
+          <AuthModal onClose={() => setShowAuth(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCreate && user && (
+          <AnnonceModal
+            onClose={() => setShowCreate(false)}
+            onSaved={() => { setShowCreate(false); addToast('Annonce publiée avec succès !', 'success'); }}
+          />
+        )}
+      </AnimatePresence>
 
       <ToastContainer toasts={toasts} />
     </div>

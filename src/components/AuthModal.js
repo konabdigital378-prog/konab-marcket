@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Mail, Lock, User, Phone, X, Sparkles, LogIn } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AuthModal({ onClose }) {
@@ -22,7 +24,7 @@ export default function AuthModal({ onClose }) {
       } else {
         if (!form.nom.trim()) throw new Error('Le nom complet est requis');
         if (form.password.length < 6) throw new Error('Mot de passe : 6 caractères minimum');
-        if (!form.telephone.trim()) throw new Error('Le numéro WhatsApp est requis pour publier des annonces');
+        if (!form.telephone.trim()) throw new Error('Le numéro WhatsApp est requis');
         await signUp(form.email, form.password, form.nom.trim(), form.telephone.trim());
         setSuccess('Compte créé avec succès ! Vérifiez votre boîte email pour confirmer, puis connectez-vous.');
         setMode('login');
@@ -44,54 +46,87 @@ export default function AuthModal({ onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 440 }}>
+    <motion.div className="modal-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div className="modal" style={{ maxWidth: 440 }}
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
         <div className="flag-strip" />
         <div className="modal-header" style={{ borderTop: 'none' }}>
           <div>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              🇧🇫 {mode === 'login' ? 'Connexion' : 'Créer un compte'}
+              {mode === 'login' ? <LogIn size={20} /> : <Sparkles size={20} />}
+              {mode === 'login' ? 'Connexion' : 'Créer un compte'}
             </h3>
-            <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2, fontWeight: 400 }}>
-              {mode === 'login' ? 'Accédez à votre espace Konab Marcket' : 'Rejoignez la marketplace du Burkina Faso'}
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, fontWeight: 400 }}>
+              {mode === 'login' ? 'Accédez à votre espace Konab Marcket' : 'Rejoignez la marketplace intelligente'}
             </p>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <motion.button className="modal-close" onClick={onClose}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <X size={18} />
+          </motion.button>
         </div>
+
         <div className="modal-body">
-          {/* Auth tabs */}
           <div className="auth-tabs">
-            <button className={`auth-tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); setSuccess(''); }}>
-              🔐 Se connecter
-            </button>
-            <button className={`auth-tab ${mode === 'register' ? 'active' : ''}`} onClick={() => { setMode('register'); setError(''); setSuccess(''); }}>
-              ✨ S'inscrire
-            </button>
+            <motion.button className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
+            >
+              <LogIn size={14} style={{ marginRight: 4, display: 'inline' }} /> Se connecter
+            </motion.button>
+            <motion.button className={`auth-tab ${mode === 'register' ? 'active' : ''}`}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => { setMode('register'); setError(''); setSuccess(''); }}
+            >
+              <Sparkles size={14} style={{ marginRight: 4, display: 'inline' }} /> S'inscrire
+            </motion.button>
           </div>
 
           {success && (
-            <div className="alert alert-info">
+            <motion.div className="alert alert-info"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+            >
               <span>✅</span>
               <span>{success}</span>
-            </div>
+            </motion.div>
           )}
+
           {error && (
-            <div className="alert alert-danger">
+            <motion.div className="alert alert-danger"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+            >
               <span>⚠️</span>
               <span>{error}</span>
-            </div>
+            </motion.div>
           )}
 
           <form onSubmit={handleSubmit}>
             {mode === 'register' && (
               <>
                 <div className="form-group">
-                  <label className="form-label">Nom complet <span className="form-required">*</span></label>
+                  <label className="form-label">
+                    <User size={12} style={{ marginRight: 4, display: 'inline' }} /> Nom complet <span className="form-required">*</span>
+                  </label>
                   <input className="form-control" placeholder="Ex: Moussa Ouédraogo" value={form.nom}
                     onChange={e => set('nom', e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Numéro WhatsApp <span className="form-required">*</span></label>
+                  <label className="form-label">
+                    <Phone size={12} style={{ marginRight: 4, display: 'inline' }} /> Numéro WhatsApp <span className="form-required">*</span>
+                  </label>
                   <input className="form-control" placeholder="+226 XX XX XX XX" value={form.telephone}
                     onChange={e => set('telephone', e.target.value)} />
                   <p className="form-hint">📱 Les clients vous contacteront sur ce numéro</p>
@@ -100,35 +135,46 @@ export default function AuthModal({ onClose }) {
             )}
 
             <div className="form-group">
-              <label className="form-label">Adresse email <span className="form-required">*</span></label>
+              <label className="form-label">
+                <Mail size={12} style={{ marginRight: 4, display: 'inline' }} /> Adresse email <span className="form-required">*</span>
+              </label>
               <input className="form-control" type="email" placeholder="votre@email.com"
                 value={form.email} onChange={e => set('email', e.target.value)} required />
             </div>
+
             <div className="form-group">
-              <label className="form-label">Mot de passe <span className="form-required">*</span></label>
+              <label className="form-label">
+                <Lock size={12} style={{ marginRight: 4, display: 'inline' }} /> Mot de passe <span className="form-required">*</span>
+              </label>
               <input className="form-control" type="password"
                 placeholder={mode === 'register' ? 'Minimum 6 caractères' : '••••••••'}
                 value={form.password} onChange={e => set('password', e.target.value)} required />
             </div>
 
-            <button type="submit" className="btn btn-vert btn-full btn-lg" disabled={loading}
-              style={{ marginTop: 4, borderRadius: 'var(--radius-sm)' }}>
+            <motion.button type="submit" className="btn btn-primary btn-full btn-lg"
+              disabled={loading}
+              style={{ borderRadius: 'var(--radius-sm)', marginTop: 8 }}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
+            >
               {loading
-                ? <span style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}><span className="btn-spinner" /> Chargement...</span>
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                    <span className="btn-spinner" /> Chargement...
+                  </span>
                 : mode === 'login'
-                  ? '🚀 Me connecter'
-                  : '✅ Créer mon compte gratuitement'
+                  ? <><LogIn size={18} /> Me connecter</>
+                  : <><Sparkles size={18} /> Créer mon compte gratuitement</>
               }
-            </button>
+            </motion.button>
           </form>
 
           {mode === 'register' && (
-            <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', marginTop: 16, lineHeight: 1.5 }}>
               En créant un compte, vous acceptez les conditions d'utilisation de Konab Marcket.
             </p>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

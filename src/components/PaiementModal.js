@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { X, CreditCard, Copy, Phone, Image as ImageIcon, CheckCircle } from 'lucide-react';
 import { supabase, USSD_CODE, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -35,7 +37,6 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
     setUploadProgress(10);
 
     try {
-      // 1. Upload de la capture vers Supabase Storage (bucket captures)
       const ext = capture.name.split('.').pop().toLowerCase() || 'jpg';
       const path = `${user.id}/${Date.now()}.${ext}`;
 
@@ -48,13 +49,11 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
 
       setUploadProgress(60);
 
-      // 2. Récupérer l'URL publique
       const { data: urlData } = supabase.storage.from('captures').getPublicUrl(path);
       const capture_url = urlData.publicUrl;
 
       setUploadProgress(80);
 
-      // 3. Enregistrer la demande dans la table paiements
       const { error: dbErr } = await supabase.from('paiements').insert({
         user_id: user.id,
         formule,
@@ -77,43 +76,64 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 520 }}>
+    <motion.div className="modal-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div className="modal" style={{ maxWidth: 520 }}
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ duration: 0.25 }}
+      >
         <div className="flag-strip" />
         <div className="modal-header">
           <div>
-            <h3>💳 Abonnement {info.name}</h3>
-            <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2, fontWeight: 400 }}>
+            <h3><CreditCard size={18} style={{ display: 'inline', marginRight: 6 }} /> Abonnement {info.name}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, fontWeight: 400 }}>
               {montant.toLocaleString('fr-FR')} FCFA / mois — Paiement Orange Money
             </p>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <motion.button className="modal-close" onClick={onClose}
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          >
+            <X size={18} />
+          </motion.button>
         </div>
 
         <div className="modal-body">
-          {/* ===== SUCCÈS ===== */}
           {sent ? (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <div style={{ fontSize: 70, marginBottom: 16 }}>✅</div>
-              <h3 style={{ fontSize: 20, marginBottom: 10 }}>Demande envoyée avec succès !</h3>
+            <motion.div style={{ textAlign: 'center', padding: '32px 0' }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <motion.div style={{ fontSize: 70, marginBottom: 16 }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              >
+                <CheckCircle size={70} style={{ color: 'var(--vert)' }} />
+              </motion.div>
+              <h3 style={{ fontSize: 20, marginBottom: 10, color: 'white' }}>Demande envoyée avec succès !</h3>
               <p style={{ color: 'var(--text2)', lineHeight: 1.7, marginBottom: 8 }}>
-                Votre preuve de paiement a été transmise directement à l'administrateur Konab Marcket.
+                Votre preuve de paiement a été transmise à l'administrateur Konab Marcket.
               </p>
               <p style={{ color: 'var(--text2)', lineHeight: 1.7, marginBottom: 28 }}>
-                Votre abonnement <strong>{info.name}</strong> sera activé dans les <strong>24 heures</strong> suivant la validation.
+                Votre abonnement <strong>{info.name}</strong> sera activé dans les <strong>24 heures</strong>.
               </p>
 
-              {/* Récapitulatif */}
-              <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', marginBottom: 24, textAlign: 'left', border: '1.5px solid var(--border)' }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Récapitulatif de votre demande</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+              <div className="card-surface" style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Récapitulatif</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text3)' }}>Compte</span>
-                    <span style={{ fontWeight: 700 }}>{profile?.nom || user?.email}</span>
+                    <span style={{ fontWeight: 700, color: 'white' }}>{profile?.nom || user?.email}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text3)' }}>Formule</span>
-                    <span style={{ fontWeight: 700 }}>{info.name}</span>
+                    <span style={{ fontWeight: 700, color: 'white' }}>{info.name}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text3)' }}>Montant</span>
@@ -121,54 +141,64 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text3)' }}>Statut</span>
-                    <span className="badge badge-warning">⏳ En attente de validation</span>
+                    <span className="badge badge-warning">⏳ En attente</span>
                   </div>
                 </div>
               </div>
 
-              <button className="btn btn-vert btn-full btn-lg"
-                style={{ borderRadius: 'var(--radius-sm)' }} onClick={onClose}>
-                Retour à mon tableau de bord
-              </button>
-            </div>
-
+              <motion.button className="btn btn-primary btn-full btn-lg"
+                style={{ borderRadius: 'var(--radius-sm)', marginTop: 20 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onClose}
+              >
+                Retour au tableau de bord
+              </motion.button>
+            </motion.div>
           ) : (
-            /* ===== FORMULAIRE ===== */
             <>
               <div className="alert alert-info" style={{ marginBottom: 20 }}>
-                📋 Effectuez le paiement Orange Money puis joignez la capture du reçu. Votre demande sera envoyée directement à l'administrateur.
+                Effectuez le paiement Orange Money puis joignez la capture du reçu.
               </div>
 
               {error && (
-                <div className="alert alert-danger" style={{ marginBottom: 16 }}>
+                <motion.div className="alert alert-danger"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                >
                   ⚠️ {error}
-                </div>
+                </motion.div>
               )}
 
               <div className="payment-steps">
-
-                {/* ÉTAPE 1 — PAIEMENT USSD */}
                 <div className="payment-step">
                   <div className="step-num">1</div>
                   <div style={{ flex: 1 }}>
-                    <div className="step-title">Effectuez le paiement Orange Money</div>
+                    <div className="step-title">Paiement Orange Money</div>
                     <div className="step-body" style={{ marginBottom: 10 }}>
-                      Composez ce code USSD depuis votre téléphone ou ouvrez le composeur :
+                      Composez ce code USSD depuis votre téléphone :
                     </div>
                     <div className="ussd-code">{ussd}</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                      <button className="btn btn-rouge btn-sm" onClick={openDialer}>
-                        📱 Composer le code
-                      </button>
-                      <button className="btn btn-outline btn-sm"
-                        onClick={() => { navigator.clipboard?.writeText(ussd); }}>
-                        📋 Copier le code
-                      </button>
+                      <motion.button className="btn btn-primary btn-sm"
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={openDialer}
+                      >
+                        <Phone size={14} /> Composer le code
+                      </motion.button>
+                      <motion.button className="btn btn-ghost btn-sm"
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => { navigator.clipboard?.writeText(ussd); }}
+                      >
+                        <Copy size={14} /> Copier
+                      </motion.button>
                     </div>
-                    <div style={{ marginTop: 10, background: 'var(--bg)', borderRadius: 'var(--radius-xs)', padding: '8px 12px', fontSize: 13 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ marginTop: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-xs)', padding: '10px 14px', fontSize: 13 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                         <span style={{ color: 'var(--text3)' }}>Destinataire</span>
-                        <strong>65413799</strong>
+                        <strong style={{ color: 'white' }}>65413799</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: 'var(--text3)' }}>Montant</span>
@@ -178,15 +208,14 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
                   </div>
                 </div>
 
-                {/* ÉTAPE 2 — CAPTURE */}
                 <div className="payment-step">
                   <div className="step-num">2</div>
                   <div style={{ flex: 1 }}>
                     <div className="step-title">
-                      Joignez la capture du reçu <span style={{ color: 'var(--rouge)' }}>*</span>
+                      Joignez la capture du reçu <span style={{ color: 'var(--danger)' }}>*</span>
                     </div>
                     <div className="step-body" style={{ marginBottom: 10 }}>
-                      Après le paiement, prenez une capture d'écran du message de confirmation Orange Money et joignez-la ici.
+                      Après le paiement, prenez une capture d'écran du message de confirmation.
                     </div>
 
                     <label style={{ cursor: 'pointer', display: 'block' }}>
@@ -194,10 +223,12 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
                       <div className={`upload-zone ${capturePreview ? 'has-img' : ''}`}
                         style={{ padding: capturePreview ? 0 : 20, minHeight: capturePreview ? 'auto' : 100 }}>
                         {capturePreview
-                          ? <img src={capturePreview} alt="capture reçu" className="img-preview" />
+                          ? <img src={capturePreview} alt="capture" className="img-preview" />
                           : (
                             <div>
-                              <div style={{ fontSize: 32, marginBottom: 8 }}>📸</div>
+                              <div style={{ fontSize: 32, marginBottom: 8, color: 'var(--text3)' }}>
+                                <ImageIcon size={32} style={{ margin: '0 auto' }} />
+                              </div>
                               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', marginBottom: 4 }}>
                                 Cliquez pour joindre votre reçu
                               </div>
@@ -211,71 +242,74 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
                     {capturePreview && (
                       <button type="button"
                         onClick={() => { setCapturePreview(''); setCapture(null); }}
-                        style={{ background: 'none', border: 'none', color: 'var(--rouge)', fontSize: 12, cursor: 'pointer', marginTop: 6, fontWeight: 700 }}>
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 12, cursor: 'pointer', marginTop: 6, fontWeight: 700 }}>
                         ✕ Changer de capture
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* ÉTAPE 3 — ENVOI */}
-                <div className="payment-step" style={{ background: capture ? '#E8F5E9' : 'var(--bg)', borderColor: capture ? '#A5D6A7' : 'var(--border)' }}>
+                <div className="payment-step" style={{ background: capture ? 'rgba(57,211,83,0.05)' : 'rgba(255,255,255,0.03)', borderColor: capture ? 'rgba(57,211,83,0.3)' : 'var(--border)' }}>
                   <div className="step-num" style={{ background: capture ? 'var(--vert)' : 'var(--text3)' }}>3</div>
                   <div>
-                    <div className="step-title">Envoyez directement à l'administrateur</div>
+                    <div className="step-title">Envoyez à l'administrateur</div>
                     <div className="step-body">
-                      Votre demande et votre reçu seront transmis <strong>directement dans le panneau admin</strong> de Konab Marcket — sans passer par WhatsApp. L'admin validera votre abonnement sous 24h.
+                      Votre demande sera transmise directement dans le panneau admin de Konab Marcket.
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Barre de progression */}
               {loading && (
-                <div style={{ margin: '16px 0' }}>
+                <div style={{ margin: '18px 0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>
                     <span>Envoi en cours...</span>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: 'var(--vert)', borderRadius: 3, width: `${uploadProgress}%`, transition: 'width 0.4s ease' }} />
+                  <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                    <motion.div style={{ height: '100%', background: 'linear-gradient(90deg, var(--vert), var(--vert-dark))', borderRadius: 3 }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${uploadProgress}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* BOUTONS */}
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button className="btn btn-outline" style={{ borderRadius: 'var(--radius-sm)' }}
+                <motion.button className="btn btn-ghost"
+                  style={{ borderRadius: 'var(--radius-sm)' }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={onClose} disabled={loading}>
                   Annuler
-                </button>
-                <button
-                  className="btn btn-vert"
+                </motion.button>
+                <motion.button className="btn btn-primary"
                   disabled={loading || !capture}
                   style={{
-                    flex: 1, justifyContent: 'center',
-                    borderRadius: 'var(--radius-sm)',
-                    opacity: (!capture || loading) ? 0.5 : 1,
-                    fontSize: 15, padding: '12px'
+                    flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)',
+                    opacity: (!capture || loading) ? 0.5 : 1, fontSize: 15, padding: '12px'
                   }}
+                  whileHover={{ scale: (!capture || loading) ? 1 : 1.02 }}
+                  whileTap={{ scale: (!capture || loading) ? 1 : 0.98 }}
                   onClick={handleSend}
                 >
                   {loading
-                    ? <span style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}><span className="btn-spinner" /> Envoi... {uploadProgress}%</span>
-                    : !capture
-                      ? '📸 Joignez d\'abord le reçu'
-                      : '📤 Envoyer ma demande à l\'admin'
+                    ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                        <span className="btn-spinner" /> Envoi... {uploadProgress}%
+                      </span>
+                    : <><CreditCard size={18} /> Envoyer ma demande</>
                   }
-                </button>
+                </motion.button>
               </div>
 
-              <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
-                🔒 Votre demande est sécurisée et transmise directement à l'administrateur Konab Marcket
+              <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
+                🔒 Votre demande est sécurisée et transmise directement à l'administrateur
               </p>
             </>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -1,8 +1,10 @@
+import { motion } from 'framer-motion';
+import { ShoppingBag, MapPin, Eye, User, Star } from 'lucide-react';
 import { TYPE_ANNONCE } from '../supabase';
 
-const CHIP_CLASS = {
-  offre: 'chip-offre', emploi: 'chip-emploi',
-  formation: 'chip-formation', article: 'chip-article', recherche: 'chip-recherche'
+const TYPE_CLASS = {
+  offre: 'type-offre', emploi: 'type-emploi',
+  formation: 'type-formation', article: 'type-article', recherche: 'type-recherche'
 };
 
 export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) {
@@ -10,7 +12,7 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
 
   function formatPrix(prix) {
     if (!prix && prix !== 0) return null;
-    if (prix === 0) return 'Gratuit / Négociable';
+    if (prix === 0) return 'Gratuit';
     return new Intl.NumberFormat('fr-FR').format(prix) + ' FCFA';
   }
 
@@ -24,57 +26,84 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
   }
 
   const prix = formatPrix(annonce.prix);
+  const initials = (annonce.profiles?.nom || 'U').slice(0, 2).toUpperCase();
 
   return (
-    <div className="annonce-card">
-      {annonce.profiles?.certifie && <div className="badge-certifie">⭐ Certifié</div>}
+    <motion.div className="product-card"
+      whileHover={{ y: -6 }}
+      transition={{ duration: 0.3 }}
+    >
+      {annonce.profiles?.certifie && (
+        <div className="product-card-certified">
+          <Star size={10} style={{ display: 'inline', marginRight: 2 }} /> Certifié
+        </div>
+      )}
 
-      <div className="card-img-wrap">
+      <div className="product-card-img">
         {annonce.affiche_url
           ? <img src={annonce.affiche_url} alt={annonce.titre} loading="lazy" />
-          : <span style={{ userSelect: 'none' }}>{typeInfo.icon}</span>
+          : <ShoppingBag size={48} style={{ color: 'rgba(255,255,255,0.15)' }} />
         }
-        {annonce.affiche_url && <div className="card-img-overlay" />}
+        {annonce.affiche_url && <div className="product-card-img-overlay" />}
       </div>
 
-      <div className="card-body">
-        <span className={`type-chip ${CHIP_CLASS[annonce.type] || 'chip-offre'}`}>
+      <div className="product-card-body">
+        <span className={`product-card-type ${TYPE_CLASS[annonce.type] || 'type-offre'}`}>
           {typeInfo.icon} {typeInfo.label}
         </span>
 
-        <div className="card-title">{annonce.titre}</div>
-        <div className="card-desc">{annonce.description}</div>
+        <div className="product-card-title">{annonce.titre}</div>
+        <div className="product-card-desc">{annonce.description}</div>
 
-        {prix && <div className="card-prix-big">{prix}</div>}
+        {prix && <div className="product-card-price">{prix}</div>}
 
-        <div className="card-meta-row" style={{ marginTop: 'auto', paddingTop: 6 }}>
-          {annonce.secteur && <span>🏢 {annonce.secteur}</span>}
-          {annonce.ville && <><span className="card-meta-dot"/><span>📍 {annonce.ville}</span></>}
+        <div className="product-card-meta" style={{ marginTop: 'auto', paddingTop: 6 }}>
+          {annonce.secteur && <span>{annonce.secteur}</span>}
+          {annonce.ville && <><span className="product-card-meta-dot" /><span><MapPin size={11} style={{ display: 'inline' }} /> {annonce.ville}</span></>}
           {annonce.date_fin && (
-            <><span className="card-meta-dot"/><span>📅 {new Date(annonce.date_fin).toLocaleDateString('fr-FR')}</span></>
+            <><span className="product-card-meta-dot" /><span>📅 {new Date(annonce.date_fin).toLocaleDateString('fr-FR')}</span></>
           )}
         </div>
-
-        {annonce.profiles && (
-          <div className="card-meta-row" style={{ marginTop: 6 }}>
-            <span>👤 {annonce.profiles.entreprise_nom || annonce.profiles.nom || 'Prestataire'}</span>
-            {annonce.vues > 0 && <><span className="card-meta-dot"/><span>👁 {annonce.vues}</span></>}
-          </div>
-        )}
       </div>
 
-      <div className="card-footer-line">
+      <div className="product-card-footer">
         {!isOwner ? (
-          <button className="btn btn-whatsapp btn-sm" style={{ flex: 1, borderRadius: 'var(--radius-sm)', justifyContent: 'center' }} onClick={handleWhatsApp}>
-            💬 {annonce.type === 'article' ? 'Acheter' : 'Intéressé(e)'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="product-card-vendor">
+              <div className="product-card-vendor-avatar">{initials}</div>
+              <span>{annonce.profiles?.entreprise_nom || annonce.profiles?.nom || 'Prestataire'}</span>
+              {annonce.vues > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}><Eye size={11} /> {annonce.vues}</span>}
+            </div>
+            <motion.button className="btn btn-primary btn-sm"
+              style={{ borderRadius: 'var(--radius-sm)' }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleWhatsApp}
+            >
+              {annonce.type === 'article' ? 'Acheter' : 'Intéressé(e)'}
+            </motion.button>
+          </div>
         ) : (
           <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-            <button className="btn btn-outline btn-sm" style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)' }} onClick={() => onEdit && onEdit(annonce)}>✏️ Modifier</button>
-            <button className="btn btn-sm" style={{ background: '#FFEBEE', color: 'var(--rouge)', borderRadius: 'var(--radius-sm)', padding: '6px 12px' }} onClick={() => onDelete && onDelete(annonce.id)}>🗑️</button>
+            <motion.button className="btn btn-ghost btn-sm"
+              style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)' }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onEdit && onEdit(annonce)}
+            >
+              Modifier
+            </motion.button>
+            <motion.button className="btn btn-sm"
+              style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 14px' }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onDelete && onDelete(annonce.id)}
+            >
+              Supprimer
+            </motion.button>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

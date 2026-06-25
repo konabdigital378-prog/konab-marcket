@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { X, Image, Send } from 'lucide-react';
 import { supabase, SECTEURS, TYPE_ANNONCE } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -95,31 +97,44 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
   const showDateFin = ['formation','emploi'].includes(form.type);
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 600 }}>
+    <motion.div className="modal-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div className="modal" style={{ maxWidth: 600 }}
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.92, y: 20 }}
+        transition={{ duration: 0.25 }}
+      >
         <div className="flag-strip" />
         <div className="modal-header">
           <div>
-            <h3>{isEdit ? '✏️ Modifier l\'annonce' : '➕ Nouvelle annonce'}</h3>
-            <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2, fontWeight: 400 }}>
-              {isEdit ? 'Mettez à jour votre annonce' : 'Publiez votre annonce sur Konab Marcket'}
+            <h3>{isEdit ? 'Modifier' : 'Nouvelle annonce'}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, fontWeight: 400 }}>
+              {isEdit ? 'Mettez à jour votre annonce' : 'Publiez sur Konab Marcket'}
             </p>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <motion.button className="modal-close" onClick={onClose}
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          >
+            <X size={18} />
+          </motion.button>
         </div>
 
         <div className="modal-body">
           {error && <div className="alert alert-danger">⚠️ {error}</div>}
 
           <form onSubmit={handleSubmit}>
-            {/* TYPE */}
             <div className="form-group">
               <label className="form-label">Type d'annonce <span className="form-required">*</span></label>
               <div className="type-pills" style={{ gap: 8 }}>
                 {TYPE_ANNONCE.map(t => (
                   <button type="button" key={t.value}
                     className={`type-pill ${form.type === t.value ? 'active' : ''}`}
-                    style={{ padding: '7px 14px', fontSize: 13 }}
+                    style={{ padding: '8px 16px', fontSize: 13 }}
                     onClick={() => set('type', t.value)}>
                     {t.icon} {t.label}
                   </button>
@@ -127,11 +142,10 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
               </div>
             </div>
 
-            {/* AFFICHE */}
             <div className="form-group">
               <label className="form-label">
                 Affiche <span className="form-required">*</span>
-                <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6 }}>— obligatoire (JPG, PNG, max 8MB)</span>
+                <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6, fontSize: 12 }}>— JPG, PNG, max 8MB</span>
               </label>
               <label className={`upload-zone ${imgPreview ? 'has-img' : ''}`}>
                 <input type="file" accept="image/*" onChange={handleImg} />
@@ -139,7 +153,9 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
                   ? <img src={imgPreview} alt="preview" className="img-preview" />
                   : (
                     <div>
-                      <div style={{ fontSize: 36, marginBottom: 8 }}>🖼️</div>
+                      <div style={{ fontSize: 36, marginBottom: 8, color: 'var(--text3)' }}>
+                        <Image size={36} style={{ margin: '0 auto' }} />
+                      </div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', marginBottom: 4 }}>
                         Cliquez pour choisir une affiche
                       </div>
@@ -150,29 +166,26 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
               </label>
               {imgPreview && (
                 <button type="button" onClick={() => { setImgPreview(''); setImgFile(null); }}
-                  style={{ background: 'none', border: 'none', color: 'var(--rouge)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 6 }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 6 }}>
                   ✕ Supprimer l'affiche
                 </button>
               )}
             </div>
 
-            {/* TITRE */}
             <div className="form-group">
-              <label className="form-label">Titre de l'annonce <span className="form-required">*</span></label>
+              <label className="form-label">Titre <span className="form-required">*</span></label>
               <input className="form-control" placeholder="Ex: Cours de comptabilité à Ouagadougou"
                 value={form.titre} onChange={e => set('titre', e.target.value)} maxLength={100} required />
               <p className="form-hint">{form.titre.length}/100 caractères</p>
             </div>
 
-            {/* DESCRIPTION */}
             <div className="form-group">
               <label className="form-label">Description <span className="form-required">*</span></label>
               <textarea className="form-control" rows={4}
-                placeholder="Décrivez en détail votre offre : ce que vous proposez, vos conditions, votre expérience..."
+                placeholder="Décrivez en détail votre offre..."
                 value={form.description} onChange={e => set('description', e.target.value)} required />
             </div>
 
-            {/* SECTEUR + VILLE */}
             <div className="two-col">
               <div className="form-group">
                 <label className="form-label">Secteur <span className="form-required">*</span></label>
@@ -188,7 +201,6 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
               </div>
             </div>
 
-            {/* PRIX */}
             {showPrix && (
               <div className="two-col">
                 <div className="form-group">
@@ -207,37 +219,47 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
               </div>
             )}
 
-            {/* DATE FIN */}
             {showDateFin && (
               <div className="form-group">
-                <label className="form-label">Date limite de candidature / fin de formation</label>
+                <label className="form-label">Date limite</label>
                 <input className="form-control" type="date" value={form.date_fin}
                   min={new Date().toISOString().split('T')[0]}
                   onChange={e => set('date_fin', e.target.value)} />
               </div>
             )}
 
-            {/* WHATSAPP */}
             <div className="form-group">
-              <label className="form-label">Votre numéro WhatsApp <span className="form-required">*</span></label>
-              <input className="form-control" placeholder="+226 XX XX XX XX ou 00226XXXXXXXX"
+              <label className="form-label">WhatsApp <span className="form-required">*</span></label>
+              <input className="form-control" placeholder="+226 XX XX XX XX"
                 value={form.whatsapp} onChange={e => set('whatsapp', e.target.value)} required />
-              <p className="form-hint">💬 Les intéressés vous contacteront directement sur ce numéro WhatsApp</p>
+              <p className="form-hint">💬 Les clients vous contactent sur ce numéro</p>
             </div>
 
-            {/* SUBMIT */}
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              <button type="button" className="btn btn-outline" style={{ borderRadius: 'var(--radius-sm)' }} onClick={onClose}>
+              <motion.button type="button" className="btn btn-ghost"
+                style={{ borderRadius: 'var(--radius-sm)' }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onClose}>
                 Annuler
-              </button>
-              <button type="submit" className="btn btn-rouge" disabled={loading}
-                style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)', fontSize: 15, padding: '12px' }}>
-                {loading ? <span style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}><span className="btn-spinner" /> Publication...</span> : isEdit ? '✅ Sauvegarder les modifications' : '🚀 Publier mon annonce'}
-              </button>
+              </motion.button>
+              <motion.button type="submit" className="btn btn-primary"
+                disabled={loading}
+                style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)', fontSize: 15, padding: '12px' }}
+                whileHover={{ scale: loading ? 1 : 1.02 }}
+                whileTap={{ scale: loading ? 1 : 0.98 }}
+              >
+                {loading
+                  ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                      <span className="btn-spinner" /> Publication...
+                    </span>
+                  : <><Send size={18} /> {isEdit ? 'Sauvegarder' : 'Publier mon annonce'}</>
+                }
+              </motion.button>
             </div>
           </form>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

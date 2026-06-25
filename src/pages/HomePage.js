@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { Search, MapPin, ArrowRight, Sparkles, TrendingUp, Package, Users, Store, Briefcase, X, Plus, User, ShoppingBag } from 'lucide-react';
 import { supabase, SECTEURS, TYPE_ANNONCE } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { SkeletonCards } from '../components/Skeleton';
-import { FadeIn, FadeInFast } from '../hooks/useFadeIn';
+import { FadeIn } from '../hooks/useFadeIn';
 import { useAuth } from '../hooks/useAuth';
 
 const VILLES_SEARCH = ['Toutes les villes', 'Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Banfora', 'Ouahigouya', 'Kaya', 'Tenkodogo', 'Fada N\'Gourma', 'Dédougou'];
@@ -15,6 +17,19 @@ const SECTEUR_ICONS = {
   'Mode & Beauté': '👗', 'Événementiel': '🎉', 'Juridique & Conseil': '⚖️',
   'Finance & Assurance': '💰', 'Énergie & Environnement': '☀️', 'Tourisme & Loisirs': '✈️',
   'Médias & Communication': '📺', 'Autres': '📦',
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
 };
 
 export default function HomePage({ onShowAuth, onShowCreate, searchQuery: externalSearch }) {
@@ -68,104 +83,206 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
 
   return (
     <div>
-      {/* ===== HERO ===== */}
       <section className="hero">
-        <div className="hero-bg-pattern" />
-        <div className="hero-stripe-rouge" />
-        <div className="hero-stripe-vert" />
+        <div className="hero-bg">
+          <div className="hero-bg-gradient" />
+          <div className="hero-grid" />
+          <div className="hero-globe" />
+        </div>
+
         <div className="hero-content">
           <div className="hero-text">
-            <div className="hero-kicker">🇧🇫 Marketplace 100% Burkinabè</div>
-            <h2 className="hero-title">
-              Trouvez & proposez des <span className="accent-rouge">opportunités</span> au <span className="accent-or">Burkina Faso</span>
-            </h2>
-            <p className="hero-sub">
-              Services, emplois, formations, articles à vendre — tout en un seul endroit, pour tous les Burkinabè.
-            </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {user
-                ? <button className="btn btn-rouge btn-lg" onClick={onShowCreate}>➕ Publier une annonce</button>
-                : <>
-                    <button className="btn btn-rouge btn-lg" onClick={onShowAuth}>✨ Rejoindre gratuitement</button>
-                    <button className="btn btn-outline-blanc btn-lg" onClick={() => document.getElementById('annonces-section')?.scrollIntoView({ behavior: 'smooth' })}>
-                      Voir les annonces ↓
-                    </button>
-                  </>
-              }
-            </div>
-            <div className="hero-stats-row">
-              <div className="hero-stat"><div className="hero-stat-num">{stats.total}+</div><div className="hero-stat-label">Annonces actives</div></div>
-              <div className="hero-stat"><div className="hero-stat-num">{stats.users}+</div><div className="hero-stat-label">Prestataires</div></div>
-              <div className="hero-stat"><div className="hero-stat-num">20</div><div className="hero-stat-label">Secteurs couverts</div></div>
-              <div className="hero-stat"><div className="hero-stat-num">13</div><div className="hero-stat-label">Régions</div></div>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="hero-kicker">
+                <Sparkles size={14} /> Marketplace 100% Burkinabè
+              </div>
+            </motion.div>
+
+            <motion.h1 className="hero-title"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              Achetez mieux · <span className="gradient-vert">Vendez plus</span><br />
+              <span className="gradient-or">Partout dans le monde</span>
+            </motion.h1>
+
+            <motion.p className="hero-sub"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              La marketplace intelligente qui connecte acheteurs et vendeurs du Burkina Faso au monde entier. 
+              Services, produits, emplois, formations — tout en un clic.
+            </motion.p>
+
+            <motion.div className="hero-actions"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              {user ? (
+                <motion.button className="btn btn-primary btn-xl"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onShowCreate}
+                >
+                  <Store size={20} /> Publier une annonce
+                </motion.button>
+              ) : (
+                <>
+                  <motion.button className="btn btn-primary btn-xl"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={onShowAuth}
+                  >
+                    <Sparkles size={20} /> Commencer à vendre
+                  </motion.button>
+                  <motion.button className="btn btn-outline btn-xl"
+                    whileHover={{ scale: 1.03, borderColor: 'var(--vert)' }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => document.getElementById('annonces-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    Découvrir les produits <ArrowRight size={18} />
+                  </motion.button>
+                </>
+              )}
+            </motion.div>
+
+            <motion.div className="hero-stats"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <div>
+                <div className="hero-stat-value">{stats.total}+</div>
+                <div className="hero-stat-label">Annonces actives</div>
+              </div>
+              <div>
+                <div className="hero-stat-value">{stats.users}+</div>
+                <div className="hero-stat-label">Vendeurs</div>
+              </div>
+              <div>
+                <div className="hero-stat-value">20</div>
+                <div className="hero-stat-label">Secteurs</div>
+              </div>
+              <div>
+                <div className="hero-stat-value">Globe</div>
+                <div className="hero-stat-label">Livraison monde</div>
+              </div>
+            </motion.div>
           </div>
 
-          {/* Carte de recherche */}
-          <div className="hero-search-card">
-            <h3>🔍 Rechercher une annonce</h3>
-            <div className="search-field">
-              <input
-                placeholder="Que cherchez-vous ? (service, produit...)"
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && doSearch()}
-              />
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, delay: 0.3 }}
+          >
+            <div className="hero-card">
+              <h3 className="hero-card-title"><Search size={20} /> Rechercher sur Konab Marcket</h3>
+
+              <div className="search-field">
+                <input
+                  placeholder="Que cherchez-vous ?"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doSearch()}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <select className="form-control" style={{ flex: 1, padding: '10px 12px', fontSize: 13 }}
+                  value={filterVille} onChange={e => setFilterVille(e.target.value)}>
+                  {VILLES_SEARCH.map(v => <option key={v}>{v}</option>)}
+                </select>
+                <select className="form-control" style={{ flex: 1.5, padding: '10px 12px', fontSize: 13 }}
+                  value={filterSecteur} onChange={e => setFilterSecteur(e.target.value === 'Tous secteurs' ? '' : e.target.value)}>
+                  <option value="">Tous secteurs</option>
+                  {SECTEURS.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div className="type-pills">
+                {[{ value: '', label: 'Tout', icon: '🔍' }, ...TYPE_ANNONCE].map(t => (
+                  <button key={t.value} className={`type-pill ${filterType === t.value ? 'active' : ''}`}
+                    onClick={() => setFilterType(t.value)}
+                  >
+                    {t.icon} {t.label || 'Tout'}
+                  </button>
+                ))}
+              </div>
+
+              <motion.button className="btn btn-primary btn-full"
+                style={{ borderRadius: 'var(--radius-sm)' }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={doSearch}
+              >
+                <Search size={16} /> Rechercher
+              </motion.button>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              <select className="form-control" style={{ flex: 1, padding: '10px 12px', fontSize: 13 }}
-                value={filterVille} onChange={e => setFilterVille(e.target.value)}>
-                {VILLES_SEARCH.map(v => <option key={v}>{v}</option>)}
-              </select>
-              <select className="form-control" style={{ flex: 1.5, padding: '10px 12px', fontSize: 13 }}
-                value={filterSecteur} onChange={e => setFilterSecteur(e.target.value === 'Tous secteurs' ? '' : e.target.value)}>
-                <option value="">Tous secteurs</option>
-                {SECTEURS.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="type-pills">
-              {[{ value: '', label: 'Tout', icon: '🔍' }, ...TYPE_ANNONCE].map(t => (
-                <button key={t.value} className={`type-pill ${filterType === t.value ? 'active' : ''}`}
-                  onClick={() => setFilterType(t.value)}>
-                  {t.icon} {t.label || 'Tout'}
-                </button>
-              ))}
-            </div>
-            <button className="btn btn-rouge btn-full" style={{ borderRadius: 'var(--radius-sm)' }} onClick={doSearch}>
-              🔍 Rechercher
-            </button>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <div className="page">
-        {/* CTA bande */}
         {!user && (
-          <div style={{ background: 'linear-gradient(135deg, var(--vert-dark), var(--vert))', borderRadius: 'var(--radius)', padding: '18px 24px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(57,211,83,0.1), rgba(57,211,83,0.03))',
+              border: '1px solid rgba(57,211,83,0.2)',
+              borderRadius: 'var(--radius)',
+              padding: '20px 28px',
+              marginBottom: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap'
+            }}
+          >
             <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>🚀 Publiez vos annonces gratuitement</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 3 }}>Rejoignez des milliers de Burkinabè sur Konab Marcket</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>
+                <Store size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
+                Publiez vos annonces gratuitement
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4 }}>
+                Rejoignez des milliers de Burkinabè sur Konab Marcket
+              </div>
             </div>
-            <button className="btn btn-or" onClick={onShowAuth}>✨ Créer un compte gratuit →</button>
-          </div>
+            <motion.button className="btn btn-gold"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onShowAuth}
+            >
+              <Sparkles size={16} /> Créer un compte gratuit →
+            </motion.button>
+          </motion.div>
         )}
 
-        {/* Annonces */}
         <div className="section" id="annonces-section">
           <div className="section-header">
             <div className="section-title">
               <div className="section-title-bar" />
-              📋 Annonces récentes
+              <Package size={22} /> Annonces récentes
               {!loading && <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)' }}>({annonces.length})</span>}
             </div>
             {(filterType || filterSecteur || search || filterVille) && (
-              <button className="btn btn-outline btn-sm" onClick={() => {
+              <button className="btn btn-ghost btn-sm" onClick={() => {
                 setFilterType(''); setFilterSecteur(''); setSearch(''); setSearchInput(''); setFilterVille('');
-              }}>✕ Réinitialiser</button>
+              }}>
+                <X size={14} /> Réinitialiser
+              </button>
             )}
           </div>
 
-          {/* Filtres rapides type */}
           <div className="filters-bar">
             <span className="filter-group-label">Type :</span>
             {[{ value: '', label: 'Tous', icon: '📋' }, ...TYPE_ANNONCE].map(t => (
@@ -179,104 +296,148 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
           {loading ? (
             <SkeletonCards count={6} />
           ) : annonces.length === 0 ? (
-            <div className="empty-state">
-              <div className="icon">🔍</div>
+            <motion.div className="empty-state"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="icon"><Search size={60} /></div>
               <h3>Aucune annonce trouvée</h3>
               <p>Modifiez vos filtres ou soyez le premier à publier dans cette catégorie !</p>
               {user
-                ? <button className="btn btn-rouge btn-lg" onClick={onShowCreate}>➕ Publier une annonce</button>
-                : <button className="btn btn-vert btn-lg" onClick={onShowAuth}>Créer un compte</button>
+                ? <motion.button className="btn btn-primary btn-lg" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onShowCreate}>
+                    <Plus size={18} /> Publier une annonce
+                  </motion.button>
+                : <motion.button className="btn btn-primary btn-lg" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onShowAuth}>
+                    <Sparkles size={18} /> Créer un compte
+                  </motion.button>
               }
-            </div>
+            </motion.div>
           ) : (
-            <div className="cards-grid">
-              {annonces.map((a, i) => (
-                <FadeInFast key={a.id}>
+            <motion.div className="cards-grid"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {annonces.map(a => (
+                <motion.div key={a.id} variants={itemVariants}>
                   <AnnonceCard annonce={a} onInterest={handleInterest} />
-                </FadeInFast>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
 
-        {/* Secteurs */}
         <FadeIn>
           <div className="section">
             <div className="section-header">
               <div className="section-title">
                 <div className="section-title-bar" />
-                🏢 Explorez par secteur
+                <Store size={22} /> Explorez par secteur
               </div>
             </div>
             <div className="secteurs-grid">
               {SECTEURS.map(s => (
-              <div key={s} className={`secteur-card ${filterSecteur === s ? 'active' : ''}`}
-                onClick={() => { setFilterSecteur(filterSecteur === s ? '' : s); window.scrollTo(0, 400); }}>
-                <div style={{ fontSize: 22, marginBottom: 4 }}>{SECTEUR_ICONS[s] || '📦'}</div>
-                <div>{s}</div>
-              </div>
-            ))}
+                <motion.div key={s} className={`secteur-card ${filterSecteur === s ? 'active' : ''}`}
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { setFilterSecteur(filterSecteur === s ? '' : s); window.scrollTo(0, 400); }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>{SECTEUR_ICONS[s] || '📦'}</div>
+                  <div>{s}</div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
         </FadeIn>
 
-        {/* Comment ça marche */}
         <FadeIn>
-        <div className="section">
-          <div className="section-title" style={{ marginBottom: 24 }}>
-            <div className="section-title-bar" />
-            💡 Comment ça marche ?
+          <div className="section">
+            <div className="section-title" style={{ marginBottom: 28 }}>
+              <div className="section-title-bar" />
+              <Sparkles size={22} /> Comment ça marche ?
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
+              {[
+                { icon: <User size={32} />, step: '1', title: 'Créez un compte', desc: 'Inscription gratuite en 30 secondes avec votre email' },
+                { icon: <Store size={32} />, step: '2', title: 'Publiez votre annonce', desc: 'Ajoutez des images, décrivez votre offre et votre contact' },
+                { icon: <Briefcase size={32} />, step: '3', title: 'Recevez des commandes', desc: 'Les clients vous contactent directement' },
+                { icon: <TrendingUp size={32} />, step: '4', title: 'Développez vos ventes', desc: 'Optez pour une formule premium pour plus de visibilité' },
+              ].map(item => (
+                <motion.div key={item.step} className="card-surface" style={{ textAlign: 'center', margin: 0 }}
+                  whileHover={{ y: -4, borderColor: 'rgba(57,211,83,0.3)' }}
+                >
+                  <div style={{ color: 'var(--vert)', marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
+                    {item.icon}
+                  </div>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--vert), var(--vert-dark))',
+                    color: 'white', fontWeight: 800, fontSize: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 12px',
+                    boxShadow: '0 0 16px rgba(57,211,83,0.2)'
+                  }}>
+                    {item.step}
+                  </div>
+                  <div style={{ fontWeight: 800, marginBottom: 8, fontSize: 16, color: 'white' }}>{item.title}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>{item.desc}</div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 16 }}>
-            {[
-              { icon: '📝', step: '1', title: 'Créez un compte', desc: 'Inscription gratuite en 30 secondes avec votre email' },
-              { icon: '📸', step: '2', title: 'Publiez votre annonce', desc: 'Ajoutez une affiche, décrivez votre offre et votre WhatsApp' },
-              { icon: '💬', step: '3', title: 'Recevez des contacts', desc: 'Les clients vous contactent directement sur WhatsApp' },
-              { icon: '⭐', step: '4', title: 'Développez vos affaires', desc: 'Optez pour une formule premium pour plus de visibilité' },
-            ].map(item => (
-              <div key={item.step} className="card-surface" style={{ textAlign: 'center', margin: 0 }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>{item.icon}</div>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--vert)', color: 'white', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>{item.step}</div>
-                <div style={{ fontWeight: 800, marginBottom: 6, fontSize: 15 }}>{item.title}</div>
-                <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>{item.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
         </FadeIn>
       </div>
 
-      {/* Footer */}
       <footer className="footer">
         <div className="flag-strip" />
-        <div className="footer-inner" style={{ paddingTop: 32 }}>
+        <div className="footer-inner" style={{ paddingTop: 36 }}>
           <div className="footer-top">
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <img src="/logokb.png" alt="Konab Marcket" style={{ width: 36, height: 36, borderRadius: 9, objectFit: 'contain', background: 'white' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <img src="/logokb.png" alt="Konab Marcket" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'contain', background: 'white', padding: 2 }} />
                 <div className="footer-brand-name">Konab Marcket</div>
               </div>
-              <div className="footer-brand-desc">La marketplace de référence du Burkina Faso. Services, emplois, formations, articles — pour tous les Burkinabè.</div>
+              <div className="footer-brand-desc">
+                La marketplace intelligente du Burkina Faso. Achetez mieux, vendez plus, partout dans le monde. 
+                Services, emplois, formations, produits — pour tous les Burkinabè.
+              </div>
+              <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                {['🌍', '💚', '⭐'].map((s, i) => (
+                  <span key={i} style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16, cursor: 'pointer', transition: 'var(--transition)'
+                  }}>{s}</span>
+                ))}
+              </div>
             </div>
             <div>
-              <div className="footer-col-title">Liens rapides</div>
-              {['Accueil', 'Publier une annonce', 'Formules', 'Contact admin'].map(l => (
+              <div className="footer-col-title">Plateforme</div>
+              {['Accueil', 'Marketplace', 'Catégories', 'Publier une annonce', 'Formules'].map(l => (
                 <div key={l} className="footer-link">{l}</div>
               ))}
             </div>
             <div>
-              <div className="footer-col-title">Secteurs populaires</div>
+              <div className="footer-col-title">Secteurs</div>
               {['Commerce & Distribution', 'Informatique & Tech', 'Emploi & Recrutement', 'Bâtiment & Construction', 'Santé & Bien-être'].map(s => (
                 <div key={s} className="footer-link" onClick={() => setFilterSecteur(s)}>{s}</div>
               ))}
             </div>
+            <div>
+              <div className="footer-col-title">Support</div>
+              {['Aide', 'Contact admin', 'Conditions', 'Confidentialité', 'FAQ'].map(l => (
+                <div key={l} className="footer-link">{l}</div>
+              ))}
+            </div>
           </div>
           <div className="footer-bottom">
-            <div className="footer-copy">© 2025 Konab Marcket — Bobo-Dioulasso, Burkina Faso 🇧🇫</div>
+            <div className="footer-copy">© 2026 Konab Marcket — Burkina Faso 🇧🇫 — Tous droits réservés</div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <div style={{ width: 14, height: 14, background: 'var(--rouge)', borderRadius: 2 }} />
+              <span style={{ fontSize: 11, color: 'var(--text3)', marginRight: 6 }}>Achetez mieux · Vendez plus · Partout dans le monde</span>
               <div style={{ width: 14, height: 14, background: 'var(--vert)', borderRadius: 2 }} />
               <div style={{ width: 14, height: 14, background: 'var(--or)', borderRadius: 2 }} />
+              <div style={{ width: 14, height: 14, background: 'var(--vert-dark)', borderRadius: 2 }} />
             </div>
           </div>
         </div>
