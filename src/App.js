@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, User, Bell, Heart, ShoppingBag, ChevronDown, LogOut, LayoutDashboard, Shield, X, Menu } from 'lucide-react';
+import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag } from 'lucide-react';
 import './index.css';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useToast, ToastContainer } from './components/Toast';

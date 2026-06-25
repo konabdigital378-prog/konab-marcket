@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, MapPin, ArrowRight, Sparkles, TrendingUp, Package, Users, Store, Briefcase, X, Plus, User, ShoppingBag } from 'lucide-react';
+import { Search, ArrowRight, Sparkles, TrendingUp, Package, Store, Briefcase, X, Plus, User } from 'lucide-react';
 import { supabase, SECTEURS, TYPE_ANNONCE } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { SkeletonCards } from '../components/Skeleton';

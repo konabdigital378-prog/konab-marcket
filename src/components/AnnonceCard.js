@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ShoppingBag, MapPin, Eye, User, Star } from 'lucide-react';
+import { ShoppingBag, MapPin, Eye, Star } from 'lucide-react';
 import { TYPE_ANNONCE } from '../supabase';
 
 const TYPE_CLASS = {

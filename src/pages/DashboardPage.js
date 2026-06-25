@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Package, TrendingUp, Crown, User, Settings, LogOut, Plus, Sparkles, CreditCard, BarChart3, Edit3, Trash2, ChevronRight } from 'lucide-react';
+import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
