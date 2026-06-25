@@ -40,7 +40,8 @@
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--font);
-  background: var(--bg);
+  background: var(--bg) url('/bgkb.png') repeat;
+  background-size: contain;
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;

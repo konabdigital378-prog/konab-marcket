@@ -36,7 +36,7 @@ function AppInner() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16, background: 'var(--bg)' }}>
-        <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, var(--rouge) 33%, var(--vert) 33% 66%, var(--or) 66%)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', marginBottom: 8 }}>🛍</div>
+        <img src="/logokb.png" alt="Konab Marcket" style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'contain', background: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', marginBottom: 8 }} />
         <div className="spinner" />
         <div style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, marginTop: 8 }}>KonabMarcket — Chargement...</div>
       </div>
@@ -50,9 +50,9 @@ function AppInner() {
         <div className="navbar-inner">
           {/* Logo */}
           <div className="navbar-logo" onClick={() => nav('home')}>
-            <div className="logo-emblem">🛍</div>
+            <img src="/logokb.png" alt="Konab Marcket" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', background: 'white' }} />
             <div className="logo-text">
-              <span className="logo-name">KonabMarcket</span>
+              <span className="logo-name">Konab Marcket</span>
               <span className="logo-tagline">🇧🇫 Marketplace</span>
             </div>
           </div>

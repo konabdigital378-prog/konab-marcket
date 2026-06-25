@@ -253,7 +253,7 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
           <div className="footer-top">
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg,var(--rouge) 33%,var(--vert) 33% 66%,var(--or) 66%)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🛍</div>
+                <img src="/logokb.png" alt="Konab Marcket" style={{ width: 36, height: 36, borderRadius: 9, objectFit: 'contain', background: 'white' }} />
                 <div className="footer-brand-name">Konab Marcket</div>
               </div>
               <div className="footer-brand-desc">La marketplace de référence du Burkina Faso. Services, emplois, formations, articles — pour tous les Burkinabè.</div>

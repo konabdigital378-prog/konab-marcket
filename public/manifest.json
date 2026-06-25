@@ -3,26 +3,21 @@
   "name": "Konab Marcket - Marketplace du Burkina Faso",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
+      "src": "logokb.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "logokb.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#2D6A4F",
-  "background_color": "#F8F9FA",
-  "description": "La marketplace de référence du Burkina Faso - Services, Emplois, Formations, Articles",
+  "theme_color": "#EF2B2D",
+  "background_color": "#F7F5F0",
+  "description": "Konab Marcket - Marketplace du Burkina Faso",
   "lang": "fr",
   "categories": ["shopping", "business"]
 }
