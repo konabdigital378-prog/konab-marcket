@@ -1,0 +1,7 @@
+/* App.css - kept minimal, main styles in index.css */
+.hide-mobile {
+  display: inline;
+}
+@media (max-width: 480px) {
+  .hide-mobile { display: none; }
+}
