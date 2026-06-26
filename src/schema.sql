@@ -147,6 +147,56 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
+-- Table favoris
+CREATE TABLE IF NOT EXISTS favoris (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  annonce_id UUID REFERENCES annonces(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, annonce_id)
+);
+
+ALTER TABLE favoris ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Favoris visibles par propriétaire" ON favoris;
+DROP POLICY IF EXISTS "Favoris créables par auth" ON favoris;
+DROP POLICY IF EXISTS "Favoris supprimables par propriétaire" ON favoris;
+
+CREATE POLICY "Favoris visibles par propriétaire" ON favoris
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Favoris créables par auth" ON favoris
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Favoris supprimables par propriétaire" ON favoris
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Table messages
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  annonce_id UUID REFERENCES annonces(id) ON DELETE CASCADE NOT NULL,
+  envoyeur_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  destinataire_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  contenu TEXT NOT NULL,
+  lu BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Messages visibles par participants" ON messages;
+DROP POLICY IF EXISTS "Messages créables par auth" ON messages;
+DROP POLICY IF EXISTS "Messages modifiables par participants" ON messages;
+
+CREATE POLICY "Messages visibles par participants" ON messages
+  FOR SELECT USING (auth.uid() = envoyeur_id OR auth.uid() = destinataire_id);
+
+CREATE POLICY "Messages créables par auth" ON messages
+  FOR INSERT WITH CHECK (auth.uid() = envoyeur_id);
+
+CREATE POLICY "Messages modifiables par participants" ON messages
+  FOR UPDATE USING (auth.uid() = envoyeur_id OR auth.uid() = destinataire_id);
+
 -- Fonction vues
 CREATE OR REPLACE FUNCTION increment_vues(annonce_id UUID)
 RETURNS VOID AS $$

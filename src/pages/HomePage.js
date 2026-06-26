@@ -32,7 +32,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
-export default function HomePage({ onShowAuth, onShowCreate, searchQuery: externalSearch }) {
+export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onShowVendeur, searchQuery: externalSearch }) {
   const [annonces, setAnnonces] = useState([]);
   const [stats, setStats] = useState({ total: 0, users: 0 });
   const [loading, setLoading] = useState(true);
@@ -41,6 +41,7 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
   const [filterType, setFilterType] = useState('');
   const [filterSecteur, setFilterSecteur] = useState('');
   const [filterVille, setFilterVille] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
   const { user } = useAuth();
 
   const fetchAnnonces = useCallback(async () => {
@@ -48,8 +49,17 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
     try {
       let q = supabase.from('annonces')
         .select('*, profiles(nom, entreprise_nom, certifie, abonnement)')
-        .eq('actif', true)
-        .order('created_at', { ascending: false });
+        .eq('actif', true);
+
+      if (sortBy === 'created_at') {
+        q = q.order('created_at', { ascending: false });
+      } else if (sortBy === 'vues') {
+        q = q.order('vues', { ascending: false }).order('created_at', { ascending: false });
+      } else if (sortBy === 'prix_asc') {
+        q = q.order('prix', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false });
+      } else if (sortBy === 'prix_desc') {
+        q = q.order('prix', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+      }
 
       if (filterType)    q = q.eq('type', filterType);
       if (filterSecteur) q = q.eq('secteur', filterSecteur);
@@ -60,7 +70,7 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
       if (!error) setAnnonces(data || []);
     } catch (_) {}
     setLoading(false);
-  }, [filterType, filterSecteur, filterVille, search]);
+  }, [filterType, filterSecteur, filterVille, search, sortBy]);
 
   useEffect(() => { fetchAnnonces(); }, [fetchAnnonces]);
 
@@ -292,6 +302,19 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
               </button>
             ))}
           </div>
+          <div className="filters-bar" style={{ marginTop: 10 }}>
+            <span className="filter-group-label">Tri :</span>
+            <select className="form-control" style={{ padding: '8px 12px', fontSize: 13, width: 'auto', minWidth: 160 }}
+              value={sortBy} onChange={e => setSortBy(e.target.value)}>
+              <option value="created_at">Plus récentes</option>
+              <option value="vues">Plus populaires</option>
+              <option value="prix_asc">Prix croissant</option>
+              <option value="prix_desc">Prix décroissant</option>
+            </select>
+            <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text3)' }}>
+              {annonces.length} résultat{annonces.length > 1 ? 's' : ''}
+            </span>
+          </div>
 
           {loading ? (
             <SkeletonCards count={6} />
@@ -320,7 +343,8 @@ export default function HomePage({ onShowAuth, onShowCreate, searchQuery: extern
             >
               {annonces.map(a => (
                 <motion.div key={a.id} variants={itemVariants}>
-                  <AnnonceCard annonce={a} onInterest={handleInterest} />
+                  <AnnonceCard annonce={a} onInterest={handleInterest}
+                    onClick={onShowDetail} showFavoriBtn />
                 </motion.div>
               ))}
             </motion.div>

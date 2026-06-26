@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag } from 'lucide-react';
+import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle } from 'lucide-react';
 import './index.css';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useToast, ToastContainer } from './components/Toast';
@@ -10,6 +10,9 @@ import AnnonceModal from './components/AnnonceModal';
 import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
+import AnnonceDetailPage from './pages/AnnonceDetailPage';
+import VendeurPage from './pages/VendeurPage';
+import MessageriePage from './pages/MessageriePage';
 
 function AppInner() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
@@ -21,6 +24,10 @@ function AppInner() {
   const [searchQuery, setSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
 
+  const [detailId, setDetailId] = useState(null);
+  const [vendeurId, setVendeurId] = useState(null);
+  const [initialChat, setInitialChat] = useState(null);
+
   if (typeof window !== 'undefined') {
     window.addEventListener('scroll', () => {
       if (window.scrollY > 40 && !scrolled) setScrolled(true);
@@ -29,6 +36,21 @@ function AppInner() {
   }
 
   function nav(p) { setPage(p); setMenuOpen(false); window.scrollTo(0, 0); }
+
+  function showDetail(annonceId) {
+    setDetailId(annonceId);
+    nav('detail');
+  }
+
+  function showVendeur(id) {
+    setVendeurId(id);
+    nav('vendeur');
+  }
+
+  function startChat(annonce, vendeur) {
+    setInitialChat({ annonceId: annonce?.id, vendeurId: vendeur?.id || annonce?.user_id, annonceTitle: annonce?.titre });
+    setPage('messagerie');
+  }
 
   function handleCreateClick() {
     if (!user) { setShowAuth(true); return; }
@@ -39,6 +61,10 @@ function AppInner() {
     signOut();
     nav('home');
     addToast('Déconnexion réussie', 'success');
+  }
+
+  function handleBackFromDetail() {
+    nav('home');
   }
 
   const initials = (profile?.nom || user?.email || '?').slice(0, 2).toUpperCase();
@@ -89,7 +115,7 @@ function AppInner() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => { setSearchQuery(searchQuery); nav('home'); }}
+                onClick={() => { nav('home'); }}
               >
                 <Search size={18} />
               </motion.button>
@@ -138,6 +164,12 @@ function AppInner() {
                         <button className="dropdown-item" onClick={() => nav('dashboard')}>
                           <LayoutDashboard size={16} /> Mon tableau de bord
                         </button>
+                        <button className="dropdown-item" onClick={() => { nav('messagerie'); setMenuOpen(false); }}>
+                          <MessageCircle size={16} /> Messagerie
+                        </button>
+                        <button className="dropdown-item" onClick={() => { nav('dashboard'); setMenuOpen(false); }}>
+                          <Heart size={16} /> Mes favoris
+                        </button>
                         <button className="dropdown-item" onClick={handleCreateClick}>
                           <Plus size={16} /> Publier une annonce
                         </button>
@@ -173,15 +205,25 @@ function AppInner() {
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={page}
+          key={page + (detailId || '') + (vendeurId || '')}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         >
-          {page === 'home'      && <HomePage key={searchQuery} searchQuery={searchQuery} onShowAuth={() => setShowAuth(true)} onShowCreate={handleCreateClick} />}
+          {page === 'home'      && <HomePage key={searchQuery} searchQuery={searchQuery}
+            onShowAuth={() => setShowAuth(true)} onShowCreate={handleCreateClick}
+            onShowDetail={showDetail} onShowVendeur={showVendeur} />}
           {page === 'dashboard' && user    && <DashboardPage onShowCreate={() => setShowCreate(true)} />}
           {page === 'admin'     && isAdmin && <AdminPage />}
+          {page === 'detail'    && <AnnonceDetailPage annonceId={detailId}
+            onBack={handleBackFromDetail} onShowAuth={() => setShowAuth(true)}
+            onStartChat={startChat} />}
+          {page === 'vendeur'   && <VendeurPage vendeurId={vendeurId}
+            onBack={handleBackFromDetail} onShowDetail={showDetail} />}
+          {page === 'messagerie' && <MessageriePage
+            onBack={() => nav('home')} initialChat={initialChat}
+            onShowDetail={showDetail} />}
         </motion.div>
       </AnimatePresence>
 
@@ -191,7 +233,7 @@ function AppInner() {
             <ShoppingBag size={20} className="bnav-icon" />
             Accueil
           </button>
-          <button className={`bnav-item ${page === 'home' && searchQuery ? 'active' : ''}`} onClick={() => nav('home')}>
+          <button className={`bnav-item ${page === 'home' ? 'active' : ''}`} onClick={() => nav('home')}>
             <Search size={20} className="bnav-icon" />
             Chercher
           </button>
@@ -200,25 +242,26 @@ function AppInner() {
             Publier
           </button>
           {user ? (
-            <button className={`bnav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => nav('dashboard')}>
-              <LayoutDashboard size={20} className="bnav-icon" />
-              Mes annonces
-            </button>
+            <>
+              <button className={`bnav-item ${page === 'messagerie' ? 'active' : ''}`} onClick={() => nav('messagerie')}>
+                <MessageCircle size={20} className="bnav-icon" />
+                Messages
+              </button>
+              <button className={`bnav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => nav('dashboard')}>
+                <LayoutDashboard size={20} className="bnav-icon" />
+                Dashboard
+              </button>
+            </>
           ) : (
             <button className="bnav-item" onClick={() => setShowAuth(true)}>
               <User size={20} className="bnav-icon" />
               Connexion
             </button>
           )}
-          {isAdmin ? (
+          {!user && isAdmin ? (
             <button className={`bnav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => nav('admin')}>
               <Shield size={20} className="bnav-icon" />
               Admin
-            </button>
-          ) : user ? (
-            <button className="bnav-item" onClick={() => nav('dashboard')}>
-              <User size={20} className="bnav-icon" />
-              Profil
             </button>
           ) : null}
         </div>

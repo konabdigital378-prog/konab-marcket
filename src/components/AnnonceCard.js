@@ -1,14 +1,36 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, MapPin, Eye, Star } from 'lucide-react';
-import { TYPE_ANNONCE } from '../supabase';
+import { ShoppingBag, MapPin, Eye, Star, Heart, MessageCircle } from 'lucide-react';
+import { supabase, TYPE_ANNONCE } from '../supabase';
+import { useAuth } from '../hooks/useAuth';
 
 const TYPE_CLASS = {
   offre: 'type-offre', emploi: 'type-emploi',
   formation: 'type-formation', article: 'type-article', recherche: 'type-recherche'
 };
 
-export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) {
+export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, onClick, showFavoriBtn }) {
+  const { user } = useAuth();
+  const [favori, setFavori] = useState(false);
   const typeInfo = TYPE_ANNONCE.find(t => t.value === annonce.type) || TYPE_ANNONCE[0];
+
+  useEffect(() => {
+    if (!user || isOwner) return;
+    supabase.from('favoris').select('id').eq('user_id', user.id).eq('annonce_id', annonce.id).single()
+      .then(({ data }) => setFavori(!!data));
+  }, [user, annonce.id, isOwner]);
+
+  async function toggleFavori(e) {
+    e.stopPropagation();
+    if (!user) return;
+    if (favori) {
+      await supabase.from('favoris').delete().eq('user_id', user.id).eq('annonce_id', annonce.id);
+      setFavori(false);
+    } else {
+      await supabase.from('favoris').insert({ user_id: user.id, annonce_id: annonce.id });
+      setFavori(true);
+    }
+  }
 
   function formatPrix(prix) {
     if (!prix && prix !== 0) return null;
@@ -16,7 +38,8 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
     return new Intl.NumberFormat('fr-FR').format(prix) + ' FCFA';
   }
 
-  function handleWhatsApp() {
+  function handleWhatsApp(e) {
+    e.stopPropagation();
     const actionLabel = annonce.type === 'article' ? 'acheter' : 'obtenir plus d\'informations sur';
     const msg = `Bonjour ! Je voudrais ${actionLabel} votre annonce "${annonce.titre}" publiée sur Konab Marcket. Pouvez-vous me donner plus de détails ?`;
     const phone = (annonce.whatsapp || '').replace(/[^0-9]/g, '');
@@ -32,11 +55,23 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
     <motion.div className="product-card"
       whileHover={{ y: -6 }}
       transition={{ duration: 0.3 }}
+      onClick={() => onClick && onClick(annonce.id)}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       {annonce.profiles?.certifie && (
         <div className="product-card-certified">
           <Star size={10} style={{ display: 'inline', marginRight: 2 }} /> Certifié
         </div>
+      )}
+
+      {showFavoriBtn && user && !isOwner && (
+        <motion.button className="product-card-favori"
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={toggleFavori}
+        >
+          <Heart size={16} fill={favori ? 'var(--danger)' : 'none'} color={favori ? 'var(--danger)' : 'rgba(255,255,255,0.7)'} />
+        </motion.button>
       )}
 
       <div className="product-card-img">
@@ -80,6 +115,7 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
               whileTap={{ scale: 0.97 }}
               onClick={handleWhatsApp}
             >
+              <MessageCircle size={14} style={{ marginRight: 4 }} />
               {annonce.type === 'article' ? 'Acheter' : 'Intéressé(e)'}
             </motion.button>
           </div>
@@ -89,7 +125,7 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
               style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)' }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onEdit && onEdit(annonce)}
+              onClick={(e) => { e.stopPropagation(); onEdit && onEdit(annonce); }}
             >
               Modifier
             </motion.button>
@@ -97,7 +133,7 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner }) 
               style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 14px' }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onDelete && onDelete(annonce.id)}
+              onClick={(e) => { e.stopPropagation(); onDelete && onDelete(annonce.id); }}
             >
               Supprimer
             </motion.button>

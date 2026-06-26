@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings } from 'lucide-react';
+import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
@@ -55,9 +55,33 @@ export default function DashboardPage({ onShowCreate }) {
 
   const tabs = [
     { id: 'annonces', label: 'Mes annonces', icon: <Package size={16} /> },
+    { id: 'favoris', label: 'Favoris', icon: <Heart size={16} /> },
     { id: 'abonnement', label: 'Abonnement', icon: <Crown size={16} /> },
     { id: 'profil', label: 'Mon profil', icon: <User size={16} /> },
   ];
+
+  const [favoris, setFavoris] = useState([]);
+  const [loadingFav, setLoadingFav] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    loadFavoris();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadFavoris() {
+    setLoadingFav(true);
+    const { data } = await supabase.from('favoris')
+      .select('*, annonces(*, profiles(nom, entreprise_nom, certifie, abonnement))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    if (data) setFavoris(data);
+    setLoadingFav(false);
+  }
+
+  async function removeFavori(favoriId) {
+    await supabase.from('favoris').delete().eq('id', favoriId);
+    setFavoris(prev => prev.filter(f => f.id !== favoriId));
+  }
 
   return (
     <div className="page">
@@ -169,6 +193,38 @@ export default function DashboardPage({ onShowCreate }) {
                   {annonces.map(a => (
                     <AnnonceCard key={a.id} annonce={a} isOwner
                       onEdit={a => setEditAnnonce(a)} onDelete={deleteAnnonce} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'favoris' && (
+            <div>
+              <div className="section-title" style={{ marginBottom: 20 }}>
+                <div className="section-title-bar" />
+                <Heart size={20} /> Mes favoris ({favoris.length})
+              </div>
+              {loadingFav ? <SkeletonCards count={3} />
+              : favoris.length === 0 ? (
+                <div className="empty-state">
+                  <div className="icon"><Heart size={60} style={{ color: 'var(--text3)' }} /></div>
+                  <h3>Aucun favori</h3>
+                  <p>Ajoutez des annonces en favoris en cliquant sur le cœur depuis la page d'accueil ou le détail d'une annonce.</p>
+                </div>
+              ) : (
+                <div className="cards-grid">
+                  {favoris.map(f => (
+                    <div key={f.id} style={{ position: 'relative' }}>
+                      <AnnonceCard annonce={f.annonces} showFavoriBtn />
+                      <motion.button className="btn btn-sm"
+                        style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,71,87,0.2)', color: 'var(--danger)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', zIndex: 2, border: 'none', cursor: 'pointer' }}
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={() => removeFavori(f.id)}
+                      >
+                        <X size={14} /> Retirer
+                      </motion.button>
+                    </div>
                   ))}
                 </div>
               )}
