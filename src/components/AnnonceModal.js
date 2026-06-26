@@ -103,11 +103,26 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
     if (session.expires_at && Date.now() / 1000 > session.expires_at) {
       const { error: refreshErr } = await supabase.auth.refreshSession();
       if (refreshErr) throw new Error('Session expirée, reconnectez-vous');
+      const { data: { session: s2 } } = await supabase.auth.getSession();
+      if (!s2) throw new Error('Session expirée, reconnectez-vous');
+      session.access_token = s2.access_token;
     }
     const ext = file.name.split('.').pop().toLowerCase();
     const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
-    const { error } = await supabase.storage.from('annonces').upload(path, file, { upsert: true, contentType: file.type });
-    if (error) throw new Error('Erreur upload image: ' + error.message);
+    const url = `${process.env.REACT_APP_SUPABASE_URL || 'https://airddmpofwbstsuhsjxl.supabase.co'}/storage/v1/object/annonces/${path}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': file.type,
+        'x-upsert': 'true',
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`Erreur upload image: ${errText}`);
+    }
     const { data } = supabase.storage.from('annonces').getPublicUrl(path);
     return data.publicUrl;
   }
