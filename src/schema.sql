@@ -74,6 +74,11 @@ DROP POLICY IF EXISTS "Profils publics limités" ON profiles;
 CREATE POLICY "Profils visibles par propriétaire" ON profiles
   FOR SELECT USING (auth.uid() = id);
 
+-- Permet de lire le nom public d'un vendeur (nécessaire pour les annonces)
+DROP POLICY IF EXISTS "Profils publics lecture limitée" ON profiles;
+CREATE POLICY "Profils publics lecture limitée" ON profiles
+  FOR SELECT USING (true);
+
 CREATE POLICY "Profils modifiables par propriétaire" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 

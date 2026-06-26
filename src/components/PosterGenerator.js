@@ -16,148 +16,161 @@ export default function PosterGenerator({ annonce, onClose }) {
   const [posterBlob, setPosterBlob] = useState(null);
   const [posterUrl, setPosterUrl] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const size = SIZES[sizeIdx];
 
   const draw = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const { w, h } = size;
-    canvas.width = w;
-    canvas.height = h;
+    setErrorMsg('');
+    try {
+      const ctx = canvas.getContext('2d');
+      const { w, h } = size;
+      canvas.width = w;
+      canvas.height = h;
 
-    const bgColor = '#0A0A0A';
+      const bgColor = '#0A0A0A';
 
-    const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+      const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
+      const img = new Image();
 
-    await new Promise((resolve) => {
-      img.onload = resolve;
-      img.onerror = resolve;
-      img.src = imageUrl || '';
-    });
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = imageUrl || '';
+      });
 
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, w, h);
-
-    if (img.src && img.width > 0) {
-      const imgScale = Math.max(w / img.width, h / img.height);
-      const imgW = img.width * imgScale;
-      const imgH = img.height * imgScale;
-      const imgX = (w - imgW) / 2;
-      const imgY = (h - imgH) / 2;
-      ctx.drawImage(img, imgX, imgY, imgW, imgH);
-    } else {
-      ctx.fillStyle = '#1A1A1A';
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, w, h);
-    }
 
-    const grad = ctx.createLinearGradient(0, h * 0.4, 0, h);
-    grad.addColorStop(0, 'rgba(0,0,0,0.0)');
-    grad.addColorStop(0.5, 'rgba(0,0,0,0.7)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.95)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+      if (imageUrl && img.width > 0) {
+        const imgScale = Math.max(w / img.width, h / img.height);
+        const imgW = img.width * imgScale;
+        const imgH = img.height * imgScale;
+        const imgX = (w - imgW) / 2;
+        const imgY = (h - imgH) / 2;
+        ctx.drawImage(img, imgX, imgY, imgW, imgH);
+      } else {
+        ctx.fillStyle = '#1A1A1A';
+        ctx.fillRect(0, 0, w, h);
+      }
 
-    const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.2);
-    topGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
-    topGrad.addColorStop(1, 'rgba(0,0,0,0.0)');
-    ctx.fillStyle = topGrad;
-    ctx.fillRect(0, 0, w, h * 0.2);
+      const grad = ctx.createLinearGradient(0, h * 0.4, 0, h);
+      grad.addColorStop(0, 'rgba(0,0,0,0.0)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0.7)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.95)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
 
-    ctx.textAlign = 'center';
+      const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.2);
+      topGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
+      topGrad.addColorStop(1, 'rgba(0,0,0,0.0)');
+      ctx.fillStyle = topGrad;
+      ctx.fillRect(0, 0, w, h * 0.2);
 
-    const title = annonce?.titre || 'Annonce';
-    const price = annonce?.prix != null
-      ? (annonce.prix === 0 ? 'GRATUIT' : `${new Intl.NumberFormat('fr-FR').format(annonce.prix)} FCFA`)
-      : '';
-    const ville = annonce?.ville || '';
-    const type = annonce?.type || '';
-    const whatsapp = annonce?.whatsapp || '';
-
-    const titleSize = Math.min(w * 0.072, 64);
-    const priceSize = Math.min(w * 0.055, 48);
-    const infoSize = Math.min(w * 0.032, 28);
-    const brandSize = Math.min(w * 0.024, 22);
-
-    const padX = w * 0.06;
-    const textW = w - padX * 2;
-
-    ctx.textBaseline = 'bottom';
-    let y = h - padX - 20;
-
-    ctx.fillStyle = 'rgba(57,211,83,0.9)';
-    ctx.font = `800 ${brandSize}px Inter, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText('Généré par Konab Marcket', w / 2, y);
-    y -= brandSize + 6;
-
-    ctx.fillStyle = 'rgba(57,211,83,0.6)';
-    ctx.font = `${Math.min(brandSize * 0.65, 14)}px Inter, sans-serif`;
-    ctx.fillText('📦 Konab Marcket — Achetez mieux · Vendez plus', w / 2, y);
-    y -= brandSize + 10;
-
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(57,211,83,0.3)';
-    ctx.lineWidth = 1;
-    ctx.moveTo(w / 2 - textW * 0.25, y);
-    ctx.lineTo(w / 2 + textW * 0.25, y);
-    ctx.stroke();
-    y -= 4;
-
-    if (whatsapp) {
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.font = `${infoSize}px Inter, sans-serif`;
-      ctx.fillText(`📱 ${whatsapp}`, w / 2, y);
-      y -= infoSize + 4;
-    }
-
-    if (ville) {
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.font = `${infoSize}px Inter, sans-serif`;
-      ctx.fillText(`📍 ${ville}`, w / 2, y);
-      y -= infoSize + 4;
-    }
-
-    if (price) {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = `900 ${priceSize}px Inter, sans-serif`;
       ctx.textAlign = 'center';
-      y -= priceSize * 0.3;
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 16;
-      ctx.fillText(price, w / 2, y);
+
+      const title = annonce?.titre || 'Annonce';
+      const price = annonce?.prix != null
+        ? (annonce.prix === 0 ? 'GRATUIT' : `${new Intl.NumberFormat('fr-FR').format(annonce.prix)} FCFA`)
+        : '';
+      const ville = annonce?.ville || '';
+      const type = annonce?.type || '';
+      const whatsapp = annonce?.whatsapp || '';
+
+      const titleSize = Math.min(w * 0.072, 64);
+      const priceSize = Math.min(w * 0.055, 48);
+      const infoSize = Math.min(w * 0.032, 28);
+      const brandSize = Math.min(w * 0.024, 22);
+
+      const padX = w * 0.06;
+      const textW = w - padX * 2;
+
+      ctx.textBaseline = 'bottom';
+      let y = h - padX - 20;
+
+      ctx.fillStyle = 'rgba(57,211,83,0.9)';
+      ctx.font = `800 ${brandSize}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('Généré par Konab Marcket', w / 2, y);
+      y -= brandSize + 6;
+
+      ctx.fillStyle = 'rgba(57,211,83,0.6)';
+      ctx.font = `${Math.min(brandSize * 0.65, 14)}px sans-serif`;
+      ctx.fillText('Konab Marcket — Achetez mieux · Vendez plus', w / 2, y);
+      y -= brandSize + 10;
+
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(57,211,83,0.3)';
+      ctx.lineWidth = 1;
+      ctx.moveTo(w / 2 - textW * 0.25, y);
+      ctx.lineTo(w / 2 + textW * 0.25, y);
+      ctx.stroke();
+      y -= 4;
+
+      if (whatsapp) {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = `${infoSize}px sans-serif`;
+        ctx.fillText(whatsapp, w / 2, y);
+        y -= infoSize + 4;
+      }
+
+      if (ville) {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = `${infoSize}px sans-serif`;
+        ctx.fillText(ville, w / 2, y);
+        y -= infoSize + 4;
+      }
+
+      if (price) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `900 ${priceSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        y -= priceSize * 0.3;
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 16;
+        ctx.fillText(price, w / 2, y);
+        ctx.shadowBlur = 0;
+        y -= priceSize + 8;
+      }
+
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `800 ${titleSize}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 20;
+
+      const lines = wrapText(ctx, title.toUpperCase(), textW);
+      for (let i = lines.length - 1; i >= 0; i--) {
+        y -= titleSize + 4;
+        ctx.fillText(lines[i], w / 2, y);
+      }
       ctx.shadowBlur = 0;
-      y -= priceSize + 8;
+
+      if (type) {
+        const typeLabels = { offre: 'OFFRE', emploi: 'EMPLOI', formation: 'FORMATION', article: 'ARTICLE', recherche: 'RECHERCHE' };
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = `700 ${infoSize * 0.85}px sans-serif`;
+        ctx.fillText(typeLabels[type] || type.toUpperCase(), w / 2, padX + infoSize);
+      }
+
+      const blob = await new Promise(resolve => {
+        try { canvas.toBlob(b => resolve(b), 'image/png'); }
+        catch (_) { resolve(null); }
+      });
+      if (blob) {
+        setPosterBlob(blob);
+        setPosterUrl(URL.createObjectURL(blob));
+      } else {
+        setErrorMsg('Impossible de générer l\'image (peut-être un bloqueur de pub ?)');
+      }
+      setImgLoaded(true);
+    } catch (e) {
+      setErrorMsg('Erreur de génération: ' + (e.message || e));
+      setImgLoaded(true);
     }
-
-    ctx.textBaseline = 'bottom';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `800 ${titleSize}px Inter, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 20;
-
-    const lines = wrapText(ctx, title.toUpperCase(), textW);
-    for (let i = lines.length - 1; i >= 0; i--) {
-      y -= titleSize + 4;
-      ctx.fillText(lines[i], w / 2, y);
-    }
-    ctx.shadowBlur = 0;
-
-    if (type) {
-      const typeLabels = { offre: '🔵 OFFRE', emploi: '💼 EMPLOI', formation: '📚 FORMATION', article: '🛒 ARTICLE', recherche: '🔍 RECHERCHE' };
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.font = `700 ${infoSize * 0.85}px Inter, sans-serif`;
-      ctx.fillText(typeLabels[type] || type.toUpperCase(), w / 2, padX + infoSize);
-    }
-
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    setPosterBlob(blob);
-    setPosterUrl(URL.createObjectURL(blob));
-    setImgLoaded(true);
   }, [annonce, size]);
 
   useEffect(() => {
@@ -247,7 +260,12 @@ export default function PosterGenerator({ annonce, onClose }) {
           }}>
             {!imgLoaded && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--text3)' }}>
-                <Loader size={20} className="spin" /> Génération de l'affiche...
+                <Loader size={20} className="spin" /> Génération...
+              </div>
+            )}
+            {errorMsg && (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>
+                <div style={{ fontSize: 14, marginBottom: 8 }}>⚠️ {errorMsg}</div>
               </div>
             )}
             <canvas ref={canvasRef}
@@ -255,7 +273,7 @@ export default function PosterGenerator({ annonce, onClose }) {
                 maxWidth: '100%',
                 maxHeight: 420,
                 objectFit: 'contain',
-                display: imgLoaded ? 'block' : 'none',
+                display: imgLoaded && !errorMsg ? 'block' : 'none',
               }}
             />
           </div>
