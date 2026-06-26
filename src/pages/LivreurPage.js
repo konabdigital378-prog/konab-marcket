@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus, Calculator, ExternalLink, Search } from 'lucide-react';
-import { supabase } from '../supabase';
+import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus, Calculator, ExternalLink, Search, Crosshair } from 'lucide-react';
+import { supabase, haversine, VILLES_COORDS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { SkeletonCards } from '../components/Skeleton';
 
@@ -34,7 +34,7 @@ function calcDistance(ville1, ville2) {
   return dist[`${ville1}->${ville2}`] || dist[`${ville2}->${ville1}`] || 0;
 }
 
-function LivreurCard({ livreur, onClick }) {
+function LivreurCard({ livreur, onClick, distanceKm }) {
   return (
     <motion.div className="livreur-card" whileHover={{ y: -3 }} onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
@@ -57,6 +57,11 @@ function LivreurCard({ livreur, onClick }) {
       <div className="livreur-card-body">
         <span><MapPin size={12} /> {livreur.zone_couverture || 'Toute la ville'}</span>
         <span><DollarSign size={12} /> {livreur.tarif_base?.toLocaleString()} FCFA base</span>
+        {distanceKm != null && distanceKm < 9999 && (
+          <span className={`badge ${distanceKm <= 50 ? 'badge-success' : 'badge-info'}`}>
+            {distanceKm.toFixed(1)} km
+          </span>
+        )}
         {livreur.disponible && <span className="badge badge-success">Disponible</span>}
       </div>
     </motion.div>
@@ -207,6 +212,8 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
   const [form, setForm] = useState({ type_vehicule: 'moto', zone_couverture: '', tarif_base: 1000, tarif_par_km: 200 });
   const [saving, setSaving] = useState(false);
   const [searchVille, setSearchVille] = useState('');
+  const [userCoords, setUserCoords] = useState(null);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -235,6 +242,18 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
       if (livs) setMesLivraisons(livs);
     }
     setLoading(false);
+  }
+
+  async function handleLocate() {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000 })
+      );
+      setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    } catch (_) {}
+    setLocating(false);
   }
 
   async function devenirLivreur(e) {
@@ -359,13 +378,27 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
         <div>
           <div className="section-header" style={{ marginBottom: 16 }}>
             <div className="section-title"><div className="section-title-bar" /> Coursiers disponibles</div>
-            <div className="navbar-search" style={{ maxWidth: 260 }}>
-              <Search size={14} style={{ marginLeft: 10, color: 'var(--text3)', flexShrink: 0 }} />
-              <input placeholder="Rechercher par ville..."
-                value={searchVille} onChange={e => setSearchVille(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && loadData()}
-                style={{ padding: '8px 10px', fontSize: 13 }}
-              />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="navbar-search" style={{ maxWidth: 200 }}>
+                <Search size={14} style={{ marginLeft: 10, color: 'var(--text3)', flexShrink: 0 }} />
+                <input placeholder="Rechercher par ville..."
+                  value={searchVille} onChange={e => setSearchVille(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && loadData()}
+                  style={{ padding: '8px 10px', fontSize: 13 }}
+                />
+              </div>
+              {!userCoords ? (
+                <motion.button className="btn btn-outline btn-sm"
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleLocate} disabled={locating}
+                  style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                  <Crosshair size={14} /> {locating ? '...' : 'À proximité'}
+                </motion.button>
+              ) : (
+                <span className="badge badge-success" style={{ fontSize: 11 }}>
+                  📍 {userCoords.lat.toFixed(2)}, {userCoords.lng.toFixed(2)}
+                </span>
+              )}
             </div>
           </div>
           {loading ? <SkeletonCards count={3} />
@@ -378,9 +411,21 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {livreurs.filter(l => l.disponible).map(l => (
-                <LivreurCard key={l.id} livreur={{ ...l, nom: l.profiles?.nom || l.profiles?.entreprise_nom || 'Coursier' }} />
-              ))}
+              {livreurs.filter(l => l.disponible)
+                .map(l => {
+                  let dist = null;
+                  if (userCoords && (l.latitude != null && l.longitude != null)) {
+                    dist = haversine(userCoords.lat, userCoords.lng, l.latitude, l.longitude);
+                  } else if (userCoords && l.zone_couverture && VILLES_COORDS[l.zone_couverture]) {
+                    const vc = VILLES_COORDS[l.zone_couverture];
+                    dist = haversine(userCoords.lat, userCoords.lng, vc.lat, vc.lng);
+                  }
+                  return { l, dist };
+                })
+                .sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity))
+                .map(({ l, dist }) => (
+                  <LivreurCard key={l.id} livreur={{ ...l, nom: l.profiles?.nom || l.profiles?.entreprise_nom || 'Coursier' }} distanceKm={dist} />
+                ))}
             </div>
           )}
         </div>

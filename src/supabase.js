@@ -31,3 +31,45 @@ export const TYPE_ANNONCE = [
   { value: 'article', label: 'Article à vendre', icon: '🛍' },
   { value: 'recherche', label: 'Recherche d\'emploi', icon: '🔍' },
 ];
+
+export const VILLES_COORDS = {
+  'Ouagadougou': { lat: 12.3714, lng: -1.5197 },
+  'Bobo-Dioulasso': { lat: 11.1771, lng: -4.2979 },
+  'Koudougou': { lat: 12.2526, lng: -2.3628 },
+  'Banfora': { lat: 10.6333, lng: -4.7667 },
+  'Ouahigouya': { lat: 13.5828, lng: -2.4216 },
+  'Kaya': { lat: 13.0917, lng: -1.0844 },
+  'Tenkodogo': { lat: 11.7833, lng: -0.3667 },
+  'Fada N\'Gourma': { lat: 12.0667, lng: 0.3667 },
+  'Dédougou': { lat: 12.4667, lng: -3.4667 },
+  'Manga': { lat: 11.6667, lng: -1.0667 },
+  'Réo': { lat: 12.3167, lng: -2.4667 },
+  'Gaoua': { lat: 10.3333, lng: -3.1833 },
+  'Diapaga': { lat: 12.0667, lng: 1.7833 },
+  'Dori': { lat: 14.0333, lng: -0.0333 },
+  'Tougan': { lat: 13.0667, lng: -3.0667 },
+  'Nouna': { lat: 12.7333, lng: -3.8667 },
+  'Léo': { lat: 11.1000, lng: -2.1000 },
+  'Kombissiri': { lat: 12.0667, lng: -1.3333 },
+  'Ziniaré': { lat: 12.5833, lng: -1.3000 },
+  'Autre': { lat: 12.3714, lng: -1.5197 },
+};
+
+export function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+export function calcDistanceKm(ville1, ville2) {
+  if (!ville1 || !ville2) return 0;
+  const c1 = VILLES_COORDS[ville1];
+  const c2 = VILLES_COORDS[ville2];
+  if (!c1 || !c2) return 0;
+  return haversine(c1.lat, c1.lng, c2.lat, c2.lng);
+}

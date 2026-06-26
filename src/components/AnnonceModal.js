@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Image, Send } from 'lucide-react';
-import { supabase, SECTEURS, TYPE_ANNONCE } from '../supabase';
+import { X, Image, Send, MapPin, Crosshair } from 'lucide-react';
+import { supabase, SECTEURS, TYPE_ANNONCE, VILLES_COORDS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
-const VILLES = ['Ouagadougou','Bobo-Dioulasso','Koudougou','Banfora','Ouahigouya','Tenkodogo','Kaya','Dédougou','Fada N\'Gourma','Manga','Réo','Gaoua','Diapaga','Dori','Tougan','Nouna','Léo','Kombissiri','Ziniaré','Autre'];
+const VILLES = Object.keys(VILLES_COORDS);
 
 export default function AnnonceModal({ annonce, onClose, onSaved }) {
   const { user, profile } = useAuth();
@@ -12,11 +12,13 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
     type: 'offre', titre: '', description: '', prix: '',
     devise: 'FCFA', date_fin: '', whatsapp: '',
     secteur: SECTEURS[0], ville: 'Ouagadougou',
+    latitude: null, longitude: null,
   });
   const [imgFile, setImgFile] = useState(null);
   const [imgPreview, setImgPreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [locating, setLocating] = useState(false);
 
   const isEdit = !!annonce;
 
@@ -28,6 +30,7 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
         devise: annonce.devise || 'FCFA', date_fin: annonce.date_fin || '',
         whatsapp: annonce.whatsapp || '', secteur: annonce.secteur || SECTEURS[0],
         ville: annonce.ville || 'Ouagadougou',
+        latitude: annonce.latitude || null, longitude: annonce.longitude || null,
       });
       if (annonce.affiche_url) setImgPreview(annonce.affiche_url);
     } else if (profile?.telephone) {
@@ -44,6 +47,35 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
     setImgFile(file);
     setImgPreview(URL.createObjectURL(file));
     setError('');
+  }
+
+  async function handleLocate() {
+    if (!navigator.geolocation) { setError('Géolocalisation non supportée'); return; }
+    setLocating(true);
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000 })
+      );
+      set('latitude', pos.coords.latitude);
+      set('longitude', pos.coords.longitude);
+      const nearest = Object.entries(VILLES_COORDS).reduce((best, [name, coord]) => {
+        const dist = Math.abs(coord.lat - pos.coords.latitude) + Math.abs(coord.lng - pos.coords.longitude);
+        return dist < best.dist ? { name, dist } : best;
+      }, { name: form.ville, dist: Infinity });
+      set('ville', nearest.name);
+    } catch (e) {
+      setError('Impossible d\'obtenir votre position. Activez la localisation.');
+    }
+    setLocating(false);
+  }
+
+  function handleVilleChange(ville) {
+    set('ville', ville);
+    const coords = VILLES_COORDS[ville];
+    if (coords) {
+      set('latitude', coords.lat);
+      set('longitude', coords.lng);
+    }
   }
 
   async function uploadImage(file) {
@@ -118,8 +150,7 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
             </p>
           </div>
           <motion.button className="modal-close" onClick={onClose}
-            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-          >
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
             <X size={18} />
           </motion.button>
         </div>
@@ -151,17 +182,9 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
                 <input type="file" accept="image/*" onChange={handleImg} />
                 {imgPreview
                   ? <img src={imgPreview} alt="preview" className="img-preview" />
-                  : (
-                    <div>
-                      <div style={{ fontSize: 36, marginBottom: 8, color: 'var(--text3)' }}>
-                        <Image size={36} style={{ margin: '0 auto' }} />
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', marginBottom: 4 }}>
-                        Cliquez pour choisir une affiche
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text3)' }}>L'affiche attire l'attention — choisissez une belle image !</div>
-                    </div>
-                  )
+                  : <div><div style={{ fontSize: 36, marginBottom: 8, color: 'var(--text3)' }}><Image size={36} style={{ margin: '0 auto' }} /></div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', marginBottom: 4 }}>Cliquez pour choisir une affiche</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>L'affiche attire l'attention — choisissez une belle image !</div></div>
                 }
               </label>
               {imgPreview && (
@@ -195,9 +218,33 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
               </div>
               <div className="form-group">
                 <label className="form-label">Ville</label>
-                <select className="form-control" value={form.ville} onChange={e => set('ville', e.target.value)}>
+                <select className="form-control" value={form.ville} onChange={e => handleVilleChange(e.target.value)}>
                   {VILLES.map(v => <option key={v}>{v}</option>)}
                 </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Localisation <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 12, color: 'var(--text3)' }}>— activez pour trouver les offres près de chez vous</span></label>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {form.latitude && form.longitude ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(57,211,83,0.08)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', border: '1px solid rgba(57,211,83,0.2)' }}>
+                    <MapPin size={16} style={{ color: 'var(--vert)' }} />
+                    <span style={{ fontSize: 13, color: 'var(--vert)', fontWeight: 600 }}>
+                      {form.latitude.toFixed(4)}, {form.longitude.toFixed(4)} — {form.ville}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, fontSize: 13, color: 'var(--text3)' }}>
+                    Aucune position définie (utilisez le bouton pour localiser)
+                  </div>
+                )}
+                <motion.button type="button" className="btn btn-outline btn-sm"
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleLocate} disabled={locating}
+                  style={{ flexShrink: 0 }}>
+                  <Crosshair size={14} /> {locating ? '...' : 'Ma position'}
+                </motion.button>
               </div>
             </div>
 
@@ -238,17 +285,14 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <motion.button type="button" className="btn btn-ghost"
                 style={{ borderRadius: 'var(--radius-sm)' }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={onClose}>
                 Annuler
               </motion.button>
               <motion.button type="submit" className="btn btn-primary"
                 disabled={loading}
                 style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)', fontSize: 15, padding: '12px' }}
-                whileHover={{ scale: loading ? 1 : 1.02 }}
-                whileTap={{ scale: loading ? 1 : 0.98 }}
-              >
+                whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}>
                 {loading
                   ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
                       <span className="btn-spinner" /> Publication...

@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS annonces (
   affiche_url TEXT,
   secteur TEXT NOT NULL,
   ville TEXT,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   actif BOOLEAN DEFAULT TRUE,
   vues INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -207,6 +209,8 @@ CREATE TABLE IF NOT EXISTS livreurs (
   tarif_par_km NUMERIC DEFAULT 200,
   note_moyenne NUMERIC DEFAULT 5.0,
   total_livraisons INTEGER DEFAULT 0,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

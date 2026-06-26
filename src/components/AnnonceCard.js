@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, MapPin, Eye, Star, Heart, MessageCircle } from 'lucide-react';
-import { supabase, TYPE_ANNONCE } from '../supabase';
+import { ShoppingBag, MapPin, Eye, Star, Heart, MessageCircle, Navigation, Zap } from 'lucide-react';
+import { supabase, TYPE_ANNONCE, haversine } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
 const TYPE_CLASS = {
@@ -9,10 +9,28 @@ const TYPE_CLASS = {
   formation: 'type-formation', article: 'type-article', recherche: 'type-recherche'
 };
 
-export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, onClick, showFavoriBtn }) {
+export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, onClick, showFavoriBtn, userCoords }) {
   const { user } = useAuth();
   const [favori, setFavori] = useState(false);
   const typeInfo = TYPE_ANNONCE.find(t => t.value === annonce.type) || TYPE_ANNONCE[0];
+
+  const distance = useMemo(() => {
+    if (!userCoords && !annonce.latitude) return null;
+    const lat = annonce.latitude;
+    const lng = annonce.longitude;
+    if (!lat || !lng) return null;
+    if (userCoords) {
+      return haversine(userCoords.lat, userCoords.lng, lat, lng);
+    }
+    return null;
+  }, [userCoords, annonce.latitude, annonce.longitude]);
+
+  const promoBadge = useMemo(() => {
+    if (!annonce.prix || annonce.prix === 0) return null;
+    if (annonce.vues > 50) return { text: '🔥 Populaire', color: 'var(--orange)' };
+    if (annonce.profiles?.certifie) return { text: '⭐ Certifié', color: 'var(--vert)' };
+    return null;
+  }, [annonce]);
 
   useEffect(() => {
     if (!user || isOwner) return;
@@ -64,12 +82,17 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
         </div>
       )}
 
+      {promoBadge && !annonce.profiles?.certifie && (
+        <div className="product-card-badge" style={{ background: 'linear-gradient(135deg, var(--orange), #e06000)' }}>
+          {promoBadge.text}
+        </div>
+      )}
+
       {showFavoriBtn && user && !isOwner && (
         <motion.button className="product-card-favori"
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
-          onClick={toggleFavori}
-        >
+          onClick={toggleFavori}>
           <Heart size={16} fill={favori ? 'var(--danger)' : 'none'} color={favori ? 'var(--danger)' : 'rgba(255,255,255,0.7)'} />
         </motion.button>
       )}
@@ -80,12 +103,24 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
           : <ShoppingBag size={48} style={{ color: 'rgba(255,255,255,0.15)' }} />
         }
         {annonce.affiche_url && <div className="product-card-img-overlay" />}
+        {distance !== null && distance <= 50 && (
+          <div className="badge badge-success" style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, fontSize: 10 }}>
+            <Navigation size={10} style={{ display: 'inline' }} /> {distance} km
+          </div>
+        )}
       </div>
 
       <div className="product-card-body">
-        <span className={`product-card-type ${TYPE_CLASS[annonce.type] || 'type-offre'}`}>
-          {typeInfo.icon} {typeInfo.label}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <span className={`product-card-type ${TYPE_CLASS[annonce.type] || 'type-offre'}`}>
+            {typeInfo.icon} {typeInfo.label}
+          </span>
+          {annonce.prix > 0 && annonce.prix < 10000 && (
+            <span className="badge badge-warning" style={{ fontSize: 9, padding: '2px 6px' }}>
+              <Zap size={10} style={{ display: 'inline' }} /> Petit prix
+            </span>
+          )}
+        </div>
 
         <div className="product-card-title">{annonce.titre}</div>
         <div className="product-card-desc">{annonce.description}</div>
@@ -93,11 +128,20 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
         {prix && <div className="product-card-price">{prix}</div>}
 
         <div className="product-card-meta" style={{ marginTop: 'auto', paddingTop: 6 }}>
-          {annonce.secteur && <span>{annonce.secteur}</span>}
-          {annonce.ville && <><span className="product-card-meta-dot" /><span><MapPin size={11} style={{ display: 'inline' }} /> {annonce.ville}</span></>}
+          <span><MapPin size={11} style={{ display: 'inline' }} /> {annonce.ville || 'Non précisé'}</span>
+          {distance !== null && (
+            <><span className="product-card-meta-dot" />
+              <span style={{ color: distance <= 10 ? 'var(--vert)' : 'var(--text2)' }}>
+                <Navigation size={11} style={{ display: 'inline' }} /> {distance} km
+              </span>
+            </>
+          )}
           {annonce.date_fin && (
             <><span className="product-card-meta-dot" /><span>📅 {new Date(annonce.date_fin).toLocaleDateString('fr-FR')}</span></>
           )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text3)' }}>
+            <Eye size={11} /> {annonce.vues || 0}
+          </div>
         </div>
       </div>
 
@@ -107,14 +151,13 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
             <div className="product-card-vendor">
               <div className="product-card-vendor-avatar">{initials}</div>
               <span>{annonce.profiles?.entreprise_nom || annonce.profiles?.nom || 'Prestataire'}</span>
-              {annonce.vues > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}><Eye size={11} /> {annonce.vues}</span>}
+              {annonce.profiles?.certifie && <Star size={11} style={{ color: 'var(--vert)' }} />}
             </div>
             <motion.button className="btn btn-primary btn-sm"
               style={{ borderRadius: 'var(--radius-sm)' }}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={handleWhatsApp}
-            >
+              onClick={handleWhatsApp}>
               <MessageCircle size={14} style={{ marginRight: 4 }} />
               {annonce.type === 'article' ? 'Acheter' : 'Intéressé(e)'}
             </motion.button>
@@ -123,20 +166,12 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
           <div style={{ display: 'flex', gap: 8, width: '100%' }}>
             <motion.button className="btn btn-ghost btn-sm"
               style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)' }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => { e.stopPropagation(); onEdit && onEdit(annonce); }}
-            >
-              Modifier
-            </motion.button>
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={(e) => { e.stopPropagation(); onEdit && onEdit(annonce); }}>Modifier</motion.button>
             <motion.button className="btn btn-sm"
               style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 14px' }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => { e.stopPropagation(); onDelete && onDelete(annonce.id); }}
-            >
-              Supprimer
-            </motion.button>
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={(e) => { e.stopPropagation(); onDelete && onDelete(annonce.id); }}>Supprimer</motion.button>
           </div>
         )}
       </div>
