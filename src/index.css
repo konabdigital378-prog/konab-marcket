@@ -2880,4 +2880,8 @@ body.light-theme .categorie-name { color: var(--noir); }
 .dash-annonce-stats span { display: flex; align-items: center; gap: 4; }
 .dash-annonce-actions { display: flex; gap: 6; flex-shrink: 0; align-items: flex-start; }
 
+/* === SPINNER === */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
 /* ===== BADGE VERT ===== */

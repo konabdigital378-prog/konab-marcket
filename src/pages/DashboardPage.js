@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image } from 'lucide-react';
+import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image as ImageIcon } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
@@ -8,6 +8,7 @@ import { SkeletonCards } from '../components/Skeleton';
 import { toast } from '../components/Toast';
 import AnnonceModal from '../components/AnnonceModal';
 import PaiementModal from '../components/PaiementModal';
+import PosterGenerator from '../components/PosterGenerator';
 
 export default function DashboardPage({ onShowCreate }) {
   const { user, profile, refreshProfile, maxAnnonces } = useAuth();
@@ -30,6 +31,7 @@ export default function DashboardPage({ onShowCreate }) {
   const [livraisonsUser, setLivraisonsUser] = useState([]);
   const [loadingLiv, setLoadingLiv] = useState(false);
   const [msgCount, setMsgCount] = useState(0);
+  const [posterAnnonce, setPosterAnnonce] = useState(null);
 
   useEffect(() => {
     if (profile) setProfileForm({ nom: profile.nom||'', telephone: profile.telephone||'', ville: profile.ville||'', secteur: profile.secteur||'', entreprise_nom: profile.entreprise_nom||'', bio: profile.bio||'', notif_new_message: profile.notif_new_message !== false, notif_livraison: profile.notif_livraison !== false });
@@ -283,7 +285,7 @@ export default function DashboardPage({ onShowCreate }) {
                             {a.prix != null && <span style={{ color: 'var(--vert)', fontWeight: 700 }}>{a.prix === 0 ? 'Gratuit' : new Intl.NumberFormat('fr-FR').format(a.prix) + ' FCFA'}</span>}
                             {!a.actif && <span className="badge badge-gray">Inactive</span>}
                             {a.actif && <span className="badge badge-success">Active</span>}
-                            {imgCount > 1 && <span><Image size={12} style={{ display: 'inline' }} /> {imgCount} photos</span>}
+                            {imgCount > 1 && <span><ImageIcon size={12} style={{ display: 'inline' }} /> {imgCount} photos</span>}
                           </div>
                           <div className="dash-annonce-stats">
                             <span><Eye size={12} style={{ display: 'inline' }} /> {a.vues || 0} vues</span>
@@ -291,18 +293,24 @@ export default function DashboardPage({ onShowCreate }) {
                             <span><Clock size={12} style={{ display: 'inline' }} /> {new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
                           </div>
                         </div>
-                        <div className="dash-annonce-actions">
+                        <div className="dash-annonce-actions" style={{ display: 'flex', gap: 4, flexDirection: 'column', alignItems: 'stretch' }}>
                           <motion.button className="btn btn-sm"
-                            style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', whiteSpace: 'nowrap' }}
+                            style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', whiteSpace: 'nowrap', fontSize: 11 }}
                             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                             onClick={(e) => { e.stopPropagation(); setEditAnnonce(a); }}>
-                            <Edit2 size={13} style={{ marginRight: 4, display: 'inline' }} /> Modifier
+                            <Edit2 size={12} style={{ marginRight: 4, display: 'inline' }} /> Modifier
                           </motion.button>
                           <motion.button className="btn btn-sm"
-                            style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 12px' }}
+                            style={{ background: 'rgba(245,183,0,0.1)', color: 'var(--or)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', fontSize: 11 }}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            onClick={(e) => { e.stopPropagation(); setPosterAnnonce(a); }}>
+                            <ImageIcon size={12} style={{ marginRight: 4, display: 'inline' }} /> Affiche
+                          </motion.button>
+                          <motion.button className="btn btn-sm"
+                            style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', fontSize: 11 }}
                             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                             onClick={(e) => { e.stopPropagation(); deleteAnnonce(a.id); }}>
-                            <Trash2 size={13} style={{ marginRight: 4, display: 'inline' }} /> Suppr.
+                            <Trash2 size={12} style={{ marginRight: 4, display: 'inline' }} /> Suppr.
                           </motion.button>
                         </div>
                       </motion.div>
@@ -777,6 +785,13 @@ export default function DashboardPage({ onShowCreate }) {
           <PaiementModal formule={showPaiement}
             onClose={() => setShowPaiement('')}
             onSuccess={() => { setShowPaiement(''); refreshProfile(); }} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {posterAnnonce && (
+          <PosterGenerator annonce={posterAnnonce}
+            onClose={() => setPosterAnnonce(null)} />
         )}
       </AnimatePresence>
     </div>
