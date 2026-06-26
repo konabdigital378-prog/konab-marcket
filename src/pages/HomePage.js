@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Search, ArrowRight, Sparkles, TrendingUp, Package, Store, Briefcase, X, Plus, User } from 'lucide-react';
 import { supabase, SECTEURS, TYPE_ANNONCE } from '../supabase';
@@ -42,7 +42,34 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
   const [filterSecteur, setFilterSecteur] = useState('');
   const [filterVille, setFilterVille] = useState('');
   const [sortBy, setSortBy] = useState('created_at');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    if (!searchInput || searchInput.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    const timer = setTimeout(async () => {
+      const { data } = await supabase.from('annonces')
+        .select('titre')
+        .ilike('titre', `%${searchInput}%`)
+        .eq('actif', true)
+        .limit(5);
+      if (data) setSuggestions(data.map(d => d.titre));
+      setShowSuggestions(data && data.length > 0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const fetchAnnonces = useCallback(async () => {
     setLoading(true);
@@ -85,7 +112,8 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
     fetchStats();
   }, []);
 
-  function doSearch() { setSearch(searchInput); }
+  function doSearch() { setSearch(searchInput); setShowSuggestions(false); }
+  function selectSuggestion(s) { setSearchInput(s); setSearch(s); setShowSuggestions(false); }
 
   async function handleInterest(id) {
     try { await supabase.rpc('increment_vues', { annonce_id: id }); } catch (_) {}
@@ -195,13 +223,26 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
             <div className="hero-card">
               <h3 className="hero-card-title"><Search size={20} /> Rechercher sur Konab Marcket</h3>
 
-              <div className="search-field">
+              <div className="search-field" ref={searchRef} style={{ position: 'relative' }}>
                 <input
                   placeholder="Que cherchez-vous ?"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && doSearch()}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                 />
+                {showSuggestions && (
+                  <div className="search-autocomplete">
+                    {suggestions.map((s, i) => (
+                      <div key={i} className="search-autocomplete-item" onClick={() => selectSuggestion(s)}>
+                        <Search size={14} style={{ color: 'var(--text3)' }} />
+                        <span dangerouslySetInnerHTML={{
+                          __html: s.replace(new RegExp(`(${searchInput})`, 'gi'), '<span class="highlight">$1</span>')
+                        }} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>

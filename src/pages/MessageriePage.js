@@ -36,7 +36,7 @@ function MessageBubble({ msg, isMine }) {
 }
 
 export default function MessageriePage({ onBack, initialChat, onShowDetail }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -127,6 +127,15 @@ export default function MessageriePage({ onBack, initialChat, onShowDetail }) {
       setMessages(prev => [...prev, data]);
       setInputText('');
       loadConversations();
+      try {
+        await supabase.rpc('creer_notification', {
+          p_user_id: activeConv,
+          p_type: 'message',
+          p_title: `Nouveau message de ${profile?.nom || 'quelqu\'un'}`,
+          p_body: inputText.trim().slice(0, 100),
+          p_data: JSON.stringify({ message_id: data.id, annonce_id: initialChat?.annonceId })
+        });
+      } catch (_) {}
     }
   }
 

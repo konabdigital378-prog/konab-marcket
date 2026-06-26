@@ -258,11 +258,23 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
   }
 
   async function updateStatut(livraisonId, statut) {
-    await supabase.from('livraisons').update({ statut, updated_at: new Date().toISOString() }).eq('id', livraisonId);
+    const { data: liv } = await supabase.from('livraisons').update({ statut, updated_at: new Date().toISOString() }).eq('id', livraisonId).select('acheteur_id, prix_estime').single();
     if (statut === 'livree' && monProfil) {
       await supabase.from('livreurs').update({ total_livraisons: (monProfil.total_livraisons || 0) + 1 }).eq('id', user.id);
     }
     loadData();
+    if (liv) {
+      try {
+        const label = { acceptee: 'acceptée', en_cours: 'en cours de livraison', livree: 'livrée', annulee: 'annulée' }[statut] || statut;
+        await supabase.rpc('creer_notification', {
+          p_user_id: liv.acheteur_id,
+          p_type: 'livraison',
+          p_title: `Livraison ${label}`,
+          p_body: `Votre commande de ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA est ${label}`,
+          p_data: JSON.stringify({ livraison_id: livraisonId, statut })
+        });
+      } catch (_) {}
+    }
   }
 
   if (!user) {

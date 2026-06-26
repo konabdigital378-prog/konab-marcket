@@ -270,6 +270,134 @@ CREATE POLICY "Livraisons modifiables par participants" ON livraisons
     auth.uid() = livreur_id
   );
 
+-- Table signalements
+CREATE TABLE IF NOT EXISTS signalements (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  annonce_id UUID REFERENCES annonces(id) ON DELETE CASCADE NOT NULL,
+  signalant_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  motif TEXT NOT NULL CHECK (motif IN ('spam','fraude','contenu_inapproprie','produit_indisponible','autre')),
+  description TEXT DEFAULT '',
+  traite BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE signalements ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Signalements créables par auth" ON signalements;
+DROP POLICY IF EXISTS "Signalements visibles par admin" ON signalements;
+
+CREATE POLICY "Signalements créables par auth" ON signalements
+  FOR INSERT WITH CHECK (auth.uid() = signalant_id);
+
+CREATE POLICY "Signalements visibles par admin" ON signalements
+  FOR SELECT USING (auth.uid() IN (SELECT id FROM profiles WHERE id IN (SELECT id FROM profiles LIMIT 100)));
+
+-- Table offres (négociation)
+CREATE TABLE IF NOT EXISTS offres (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  annonce_id UUID REFERENCES annonces(id) ON DELETE CASCADE NOT NULL,
+  acheteur_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  montant NUMERIC NOT NULL,
+  message TEXT DEFAULT '',
+  statut TEXT DEFAULT 'en_attente' CHECK (statut IN ('en_attente','acceptee','refusee')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE offres ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Offres visibles par participants" ON offres;
+DROP POLICY IF EXISTS "Offres créables par auth" ON offres;
+DROP POLICY IF EXISTS "Offres modifiables par vendeur" ON offres;
+
+CREATE POLICY "Offres visibles par participants" ON offres
+  FOR SELECT USING (auth.uid() = acheteur_id OR auth.uid() IN (SELECT user_id FROM annonces WHERE annonces.id = offres.annonce_id));
+
+CREATE POLICY "Offres créables par auth" ON offres
+  FOR INSERT WITH CHECK (auth.uid() = acheteur_id);
+
+CREATE POLICY "Offres modifiables par vendeur" ON offres
+  FOR UPDATE USING (auth.uid() IN (SELECT user_id FROM annonces WHERE annonces.id = offres.annonce_id));
+
+-- Table adresses (carnet d'adresses)
+CREATE TABLE IF NOT EXISTS adresses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  libelle TEXT DEFAULT 'Domicile',
+  ville TEXT NOT NULL,
+  adresse TEXT NOT NULL,
+  telephone TEXT NOT NULL,
+  instructions TEXT DEFAULT '',
+  est_defaut BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE adresses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Adresses visibles par proprietaire" ON adresses;
+DROP POLICY IF EXISTS "Adresses créables par auth" ON adresses;
+DROP POLICY IF EXISTS "Adresses modifiables par proprietaire" ON adresses;
+DROP POLICY IF EXISTS "Adresses supprimables par proprietaire" ON adresses;
+
+CREATE POLICY "Adresses visibles par proprietaire" ON adresses
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Adresses créables par auth" ON adresses
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Adresses modifiables par proprietaire" ON adresses
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Adresses supprimables par proprietaire" ON adresses
+  FOR DELETE USING (auth.uid() = user_id);
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notif_new_message BOOLEAN DEFAULT TRUE;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notif_livraison BOOLEAN DEFAULT TRUE;
+
+-- Table notifications
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('message','offre','livraison','signalement','abonnement','system')),
+  title TEXT NOT NULL,
+  body TEXT DEFAULT '',
+  data JSONB DEFAULT '{}',
+  lu BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Notifications visibles par proprietaire" ON notifications;
+DROP POLICY IF EXISTS "Notifications créables" ON notifications;
+DROP POLICY IF EXISTS "Notifications modifiables par proprietaire" ON notifications;
+
+CREATE POLICY "Notifications visibles par proprietaire" ON notifications
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Notifications créables" ON notifications
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Notifications modifiables par proprietaire" ON notifications
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Index pour requêtes rapides
+CREATE INDEX IF NOT EXISTS idx_notifications_user_lu ON notifications(user_id, lu);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
+
+-- Fonction pour créer une notification facilement
+CREATE OR REPLACE FUNCTION creer_notification(p_user_id UUID, p_type TEXT, p_title TEXT, p_body TEXT DEFAULT '', p_data JSONB DEFAULT '{}')
+RETURNS UUID AS $$
+DECLARE
+  v_id UUID;
+BEGIN
+  INSERT INTO notifications (user_id, type, title, body, data)
+  VALUES (p_user_id, p_type, p_title, p_body, p_data)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Fonction vues
 CREATE OR REPLACE FUNCTION increment_vues(annonce_id UUID)
 RETURNS VOID AS $$

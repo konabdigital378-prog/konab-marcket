@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Eye, Calendar, Heart, Share2, MessageCircle, ShoppingBag, Star, Store, ChevronRight, Truck } from 'lucide-react';
+import { ArrowLeft, MapPin, Eye, Calendar, Heart, Share2, MessageCircle, ShoppingBag, Star, Store, ChevronRight, Truck, Flag, Gavel, X, CheckCircle } from 'lucide-react';
 import { supabase, TYPE_ANNONCE } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { useAuth } from '../hooks/useAuth';
@@ -10,11 +10,17 @@ const TYPE_CLASS = {
   formation: 'type-formation', article: 'type-article', recherche: 'type-recherche'
 };
 
-export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onStartChat, onShowLivraison }) {
+export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onStartChat, onShowLivraison, onShowSignalement }) {
   const [annonce, setAnnonce] = useState(null);
   const [similaires, setSimilaires] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favori, setFavori] = useState(false);
+  const [showOffer, setShowOffer] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
+  const [offerMsg, setOfferMsg] = useState('');
+  const [sendingOffer, setSendingOffer] = useState(false);
+  const [offerSent, setOfferSent] = useState(false);
+  const [offerError, setOfferError] = useState('');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -68,6 +74,42 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
     const url = window.location.href;
     const msg = `Découvrez "${annonce.titre}" sur Konab Marcket !`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg + ' ' + url)}`, '_blank');
+  }
+
+  function handleShareFull() {
+    if (navigator.share) {
+      navigator.share({ title: annonce.titre, text: `Découvrez "${annonce.titre}" sur Konab Marcket`, url: window.location.href });
+    } else {
+      handleShare();
+    }
+  }
+
+  async function handleSendOffer() {
+    if (!user) { onShowAuth(); return; }
+    if (!offerAmount || parseInt(offerAmount) <= 0) { setOfferError('Montant invalide'); return; }
+    setSendingOffer(true);
+    setOfferError('');
+    const { error } = await supabase.from('offres').insert({
+      annonce_id: annonceId,
+      acheteur_id: user.id,
+      montant: parseInt(offerAmount),
+      message: offerMsg,
+    });
+    if (error) {
+      setOfferError(error.message);
+    } else {
+      try {
+        await supabase.rpc('creer_notification', {
+          p_user_id: annonce.user_id,
+          p_type: 'offre',
+          p_title: `Nouvelle offre sur "${annonce.titre}"`,
+          p_body: `${(user?.email || 'Quelqu\'un').split('@')[0]} propose ${parseInt(offerAmount).toLocaleString('fr-FR')} FCFA`,
+          p_data: JSON.stringify({ annonce_id: annonceId, montant: parseInt(offerAmount) })
+        });
+      } catch (_) {}
+      setOfferSent(true);
+    }
+    setSendingOffer(false);
   }
 
   if (loading) {
@@ -136,7 +178,7 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
                 {typeInfo.icon} {typeInfo.label}
               </span>
               {vendeur?.certifie && (
-                <span className="badge badge-gold"><Star size={12} /> Certifié</span>
+                <span className="verified-badge-large"><Star size={14} /> Vendeur certifié</span>
               )}
             </div>
 
@@ -221,6 +263,16 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
                   <Truck size={20} /> Faire livrer
                 </motion.button>
 
+                {user && (
+                  <motion.button className="btn btn-full btn-lg"
+                    style={{ background: 'rgba(255,71,87,0.06)', color: 'var(--danger)', border: '1px solid rgba(255,71,87,0.15)', marginBottom: 10 }}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowOffer(true)}
+                  >
+                    <Gavel size={20} /> Faire une offre
+                  </motion.button>
+                )}
+
                 <div className="detail-actions-row">
                   <motion.button className="detail-action-btn"
                     whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -232,21 +284,36 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
                   </motion.button>
                   <motion.button className="detail-action-btn"
                     whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    onClick={handleShare}
+                    onClick={handleShareFull}
                   >
                     <Share2 size={18} /> Partager
                   </motion.button>
                 </div>
+
+                <motion.button className="detail-action-btn"
+                  style={{ width: '100%', justifyContent: 'center', color: 'var(--text3)', fontSize: 12, gap: 6, marginTop: 4 }}
+                  whileHover={{ scale: 1.02, color: 'var(--danger)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => user ? onShowSignalement(annonceId) : onShowAuth()}
+                >
+                  <Flag size={14} /> Signaler cette annonce
+                </motion.button>
               </>
             )}
 
             <div className="detail-vendeur-card" onClick={() => onBack()}>
               <div className="detail-vendeur-avatar">
                 {(vendeur?.nom || 'U').slice(0, 2).toUpperCase()}
+                {vendeur?.certifie && (
+                  <div style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--vert)', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
+                    <Star size={8} fill="white" color="white" />
+                  </div>
+                )}
               </div>
               <div className="detail-vendeur-info">
                 <div className="detail-vendeur-name">
                   {vendeur?.entreprise_nom || vendeur?.nom || 'Prestataire'}
+                  {vendeur?.certifie && <Star size={12} style={{ color: 'var(--vert)', marginLeft: 4, display: 'inline' }} />}
                 </div>
                 <div className="detail-vendeur-meta">
                   <Store size={12} /> Voir le profil
@@ -257,6 +324,93 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
           </div>
         </motion.div>
       </div>
+
+      {showOffer && !offerSent && (
+        <motion.div className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={e => e.target === e.currentTarget && setShowOffer(false)}
+        >
+          <motion.div className="modal" style={{ maxWidth: 420 }}
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+          >
+            <div className="flag-strip" />
+            <div className="modal-header">
+              <h3><Gavel size={18} style={{ display: 'inline', marginRight: 8 }} /> Faire une offre</h3>
+              <motion.button className="modal-close" onClick={() => setShowOffer(false)}
+                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <X size={18} />
+              </motion.button>
+            </div>
+            <div className="modal-body">
+              <p style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 16 }}>
+                Proposez votre prix pour "<strong style={{ color: 'white' }}>{annonce.titre}</strong>"
+              </p>
+              {offerError && <div className="alert alert-danger">{offerError}</div>}
+              <div className="form-group">
+                <label className="form-label">Votre offre</label>
+                <div className="offer-input-group">
+                  <span>FCFA</span>
+                  <input type="number" placeholder="Montant"
+                    value={offerAmount}
+                    onChange={e => setOfferAmount(e.target.value)}
+                    min="1"
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Message (optionnel)</label>
+                <textarea className="form-control" placeholder="Expliquez votre offre..."
+                  value={offerMsg} onChange={e => setOfferMsg(e.target.value)} rows={2} />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <motion.button className="btn btn-ghost" style={{ borderRadius: 'var(--radius-sm)' }}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowOffer(false)} disabled={sendingOffer}>
+                  Annuler
+                </motion.button>
+                <motion.button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)' }}
+                  disabled={sendingOffer || !offerAmount}
+                  whileHover={{ scale: (sendingOffer || !offerAmount) ? 1 : 1.02 }}
+                  whileTap={{ scale: (sendingOffer || !offerAmount) ? 1 : 0.98 }}
+                  onClick={handleSendOffer}>
+                  {sendingOffer ? <><span className="btn-spinner" /> Envoi...</> : 'Envoyer l\'offre'}
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {offerSent && (
+        <motion.div className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={e => e.target === e.currentTarget && setShowOffer(false)}
+        >
+          <motion.div className="modal" style={{ maxWidth: 400 }}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="flag-strip" />
+            <div className="modal-body" style={{ textAlign: 'center', padding: '32px' }}>
+                  <CheckCircle size={60} style={{ color: 'var(--vert)', marginBottom: 16 }} />
+              <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, color: 'white' }}>Offre envoyée !</h3>
+              <p style={{ color: 'var(--text2)', marginBottom: 20 }}>
+                Le vendeur sera notifié de votre proposition.
+              </p>
+              <motion.button className="btn btn-primary" onClick={() => { setShowOffer(false); setOfferSent(false); }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                Fermer
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {similaires.length > 0 && (
         <motion.div className="section"
@@ -280,3 +434,4 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
     </div>
   );
 }
+

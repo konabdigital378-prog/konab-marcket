@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Store, MapPin, Star, Package, Calendar } from 'lucide-react';
+import { ArrowLeft, Store, MapPin, Star, Package, Calendar, Shield, Phone } from 'lucide-react';
 import { supabase } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { SkeletonCards } from '../components/Skeleton';
@@ -25,7 +25,9 @@ export default function VendeurPage({ vendeurId, onBack, onShowDetail }) {
 
       const { count: total } = await supabase.from('annonces')
         .select('*', { count: 'exact', head: true }).eq('user_id', vendeurId).eq('actif', true);
-      setStats({ total: total || 0 });
+      const { count: totalVues } = await supabase.from('annonces')
+        .select('vues', { count: 'exact', head: true }).eq('user_id', vendeurId);
+      setStats({ total: total || 0, vues: totalVues || 0 });
 
       setLoading(false);
     }
@@ -70,14 +72,32 @@ export default function VendeurPage({ vendeurId, onBack, onShowDetail }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="vendeur-profile-banner" />
+        <div className="vendeur-profile-banner" style={{
+          background: vendeur.certifie
+            ? 'linear-gradient(135deg, rgba(57,211,83,0.2), rgba(57,211,83,0.05))'
+            : undefined
+        }} />
         <div className="vendeur-profile-content">
-          <div className="vendeur-avatar-large">{initials}</div>
+          <div className="vendeur-avatar-large" style={vendeur.certifie ? { borderColor: 'var(--vert)', boxShadow: '0 0 24px rgba(57,211,83,0.3)' } : undefined}>
+            {initials}
+            {vendeur.certifie && (
+              <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--vert)', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--noir2)' }}>
+                <Star size={12} fill="white" color="white" />
+              </div>
+            )}
+          </div>
           <div className="vendeur-profile-info">
-            <h1 className="vendeur-name">{vendeur.entreprise_nom || vendeur.nom}</h1>
+            <h1 className="vendeur-name" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {vendeur.entreprise_nom || vendeur.nom}
+              {vendeur.certifie && (
+                <span className="verified-badge-large" style={{ fontSize: 12 }}>
+                  <Shield size={14} /> Vérifié
+                </span>
+              )}
+            </h1>
             <div className="vendeur-badges">
-              {vendeur.certifie && <span className="badge badge-gold"><Star size={12} /> Certifié</span>}
-              <span className={`badge ${vendeur.abonnement === 'premium' ? 'badge-gold' : vendeur.abonnement === 'certified' ? 'badge-vert' : 'badge-default'}`}>
+              {vendeur.certifie && <span className="badge badge-vert"><Star size={12} /> Certifié Konab</span>}
+              <span className={`badge ${vendeur.abonnement === 'premium' ? 'badge-gold' : vendeur.abonnement === 'certified' ? 'badge-vert' : 'badge-gray'}`}>
                 {vendeur.abonnement === 'certified' ? 'Certifié Entreprise' : vendeur.abonnement === 'premium' ? 'Premium' : 'Gratuit'}
               </span>
             </div>
@@ -85,6 +105,10 @@ export default function VendeurPage({ vendeurId, onBack, onShowDetail }) {
               <div className="vendeur-stat-item">
                 <Package size={16} />
                 <span>{stats.total} annonces</span>
+              </div>
+              <div className="vendeur-stat-item">
+                <Star size={16} />
+                <span>{stats.vues} vues</span>
               </div>
               {vendeur.secteur && (
                 <div className="vendeur-stat-item">
@@ -103,6 +127,13 @@ export default function VendeurPage({ vendeurId, onBack, onShowDetail }) {
                 <span>Membre depuis {new Date(vendeur.created_at).toLocaleDateString('fr-FR')}</span>
               </div>
             </div>
+            {vendeur.telephone && (
+              <motion.a href={`https://wa.me/${vendeur.telephone.replace(/[^0-9]/g, '')}`} target="_blank"
+                className="btn btn-whatsapp btn-sm" style={{ marginTop: 12, display: 'inline-flex' }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <Phone size={14} /> Contacter par WhatsApp
+              </motion.a>
+            )}
           </div>
         </div>
       </motion.div>
