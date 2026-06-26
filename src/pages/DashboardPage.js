@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck } from 'lucide-react';
+import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
@@ -225,20 +225,21 @@ export default function DashboardPage({ onShowCreate }) {
                   <div className="section-title-bar" />
                   <Package size={20} /> Mes annonces ({annonces.filter(a=>a.actif).length}/{maxAnnonces()})
                 </div>
-                {canCreate
-                  ? <motion.button className="btn btn-primary" onClick={onShowCreate || (() => {})}
-                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    >
-                      <Plus size={16} /> Nouvelle annonce
-                    </motion.button>
-                  : <span className="badge badge-danger">⚠️ Limite atteinte</span>
-                }
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <motion.button className="btn btn-primary"
+                    onClick={() => onShowCreate && onShowCreate()}
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    disabled={!canCreate}
+                  >
+                    <Plus size={16} /> Publier
+                  </motion.button>
+                </div>
               </div>
-              {!canCreate && (
-                <div className="alert alert-warning">
-                  ⚠️ Vous avez atteint la limite de {maxAnnonces()} annonces.
+              {!canCreate && annonces.filter(a=>a.actif).length > 0 && (
+                <div className="alert alert-warning" style={{ marginBottom: 16 }}>
+                  ⚠️ Limite de {maxAnnonces()} annonces atteinte.
                   <button onClick={() => setTab('abonnement')} style={{ background:'none', border:'none', color:'var(--vert)', fontWeight:800, cursor:'pointer', marginLeft:8 }}>
-                    Upgrader →
+                    Passer en premium →
                   </button>
                 </div>
               )}
@@ -248,17 +249,65 @@ export default function DashboardPage({ onShowCreate }) {
                   <div className="icon"><Package size={60} style={{ color: 'var(--text3)' }} /></div>
                   <h3>Aucune annonce publiée</h3>
                   <p>Publiez votre première annonce et commencez à recevoir des contacts !</p>
-                  <motion.button className="btn btn-primary btn-lg" onClick={onShowCreate || (() => {})}
+                  <motion.button className="btn btn-primary btn-lg"
+                    onClick={() => onShowCreate && onShowCreate()}
                     whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                     <Plus size={18} /> Créer ma première annonce
                   </motion.button>
                 </div>
               ) : (
-                <div className="cards-grid">
-                  {annonces.map(a => (
-                    <AnnonceCard key={a.id} annonce={a} isOwner
-                      onEdit={a => setEditAnnonce(a)} onDelete={deleteAnnonce} />
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {annonces.map(a => {
+                    const imgCount = (a.images?.length || 0) + (a.affiche_url ? 1 : 0);
+                    return (
+                      <motion.div key={a.id} className="dash-annonce-card"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        layout
+                      >
+                        <img className="dash-annonce-thumb"
+                          src={a.affiche_url || (a.images?.[0]) || ''}
+                          alt={a.titre}
+                          onError={e => { e.target.style.display = 'none'; }}
+                        />
+                        <div className="dash-annonce-body">
+                          <div className="dash-annonce-title">{a.titre}</div>
+                          {a.description && (
+                            <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.4, marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                              {a.description}
+                            </div>
+                          )}
+                          <div className="dash-annonce-meta">
+                            <span>{a.ville || 'Non précisée'}</span>
+                            <span>{a.secteur}</span>
+                            {a.prix != null && <span style={{ color: 'var(--vert)', fontWeight: 700 }}>{a.prix === 0 ? 'Gratuit' : new Intl.NumberFormat('fr-FR').format(a.prix) + ' FCFA'}</span>}
+                            {!a.actif && <span className="badge badge-gray">Inactive</span>}
+                            {a.actif && <span className="badge badge-success">Active</span>}
+                            {imgCount > 1 && <span><Image size={12} style={{ display: 'inline' }} /> {imgCount} photos</span>}
+                          </div>
+                          <div className="dash-annonce-stats">
+                            <span><Eye size={12} style={{ display: 'inline' }} /> {a.vues || 0} vues</span>
+                            <span><MessageCircle size={12} style={{ display: 'inline' }} /> 0</span>
+                            <span><Clock size={12} style={{ display: 'inline' }} /> {new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </div>
+                        <div className="dash-annonce-actions">
+                          <motion.button className="btn btn-sm"
+                            style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', whiteSpace: 'nowrap' }}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            onClick={(e) => { e.stopPropagation(); setEditAnnonce(a); }}>
+                            <Edit2 size={13} style={{ marginRight: 4, display: 'inline' }} /> Modifier
+                          </motion.button>
+                          <motion.button className="btn btn-sm"
+                            style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 12px' }}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            onClick={(e) => { e.stopPropagation(); deleteAnnonce(a.id); }}>
+                            <Trash2 size={13} style={{ marginRight: 4, display: 'inline' }} /> Suppr.
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>

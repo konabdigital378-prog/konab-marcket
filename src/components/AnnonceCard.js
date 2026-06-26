@@ -103,6 +103,11 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
           : <ShoppingBag size={48} style={{ color: 'rgba(255,255,255,0.15)' }} />
         }
         {annonce.affiche_url && <div className="product-card-img-overlay" />}
+        {(annonce.images?.length || 0) > 1 && (
+          <div className="badge" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, fontSize: 10, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none' }}>
+            +{annonce.images.length} photos
+          </div>
+        )}
         {distance !== null && distance <= 50 && (
           <div className="badge badge-success" style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, fontSize: 10 }}>
             <Navigation size={10} style={{ display: 'inline' }} /> {distance} km

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Eye, Calendar, Heart, Share2, MessageCircle, ShoppingBag, Star, Store, ChevronRight, Truck, Flag, Gavel, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Eye, Calendar, Heart, Share2, MessageCircle, ShoppingBag, Star, Store, ChevronRight, Truck, Flag, Gavel, X, CheckCircle, ChevronLeft, Image } from 'lucide-react';
 import { supabase, TYPE_ANNONCE } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +21,7 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
   const [sendingOffer, setSendingOffer] = useState(false);
   const [offerSent, setOfferSent] = useState(false);
   const [offerError, setOfferError] = useState('');
+  const [galIdx, setGalIdx] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -159,11 +160,27 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
           >
             {annonce.affiche_url ? (
               <div className="detail-image-container">
-                <img src={annonce.affiche_url} alt={annonce.titre} className="detail-image" />
+                <img src={annonce.images?.[galIdx] || annonce.affiche_url} alt={annonce.titre} className="detail-image" />
+                {(annonce.images?.length || 0) > 1 && (
+                  <>
+                    <button className="gal-nav gal-prev" onClick={() => setGalIdx(i => (i - 1 + annonce.images.length) % annonce.images.length)}>
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button className="gal-nav gal-next" onClick={() => setGalIdx(i => (i + 1) % annonce.images.length)}>
+                      <ChevronRight size={20} />
+                    </button>
+                    <div className="gal-dots">
+                      {annonce.images.map((_, i) => (
+                        <span key={i} className={`gal-dot ${i === galIdx ? 'active' : ''}`} onClick={() => setGalIdx(i)} />
+                      ))}
+                    </div>
+                    <div className="gal-counter">{galIdx + 1} / {annonce.images.length}</div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="detail-image-placeholder">
-                <ShoppingBag size={72} style={{ color: 'rgba(255,255,255,0.15)' }} />
+                <Image size={72} style={{ color: 'rgba(255,255,255,0.15)' }} />
               </div>
             )}
           </motion.div>

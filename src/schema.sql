@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS annonces (
   date_fin DATE,
   whatsapp TEXT NOT NULL,
   affiche_url TEXT,
+  images TEXT[] DEFAULT '{}',
   secteur TEXT NOT NULL,
   ville TEXT,
   latitude DOUBLE PRECISION,
@@ -401,6 +402,13 @@ BEGIN
   RETURN v_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Ajout colonnes géolocalisation (si tables déjà existantes)
+ALTER TABLE annonces ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE annonces ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE annonces ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+ALTER TABLE livreurs ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE livreurs ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 
 -- Fonction vues
 CREATE OR REPLACE FUNCTION increment_vues(annonce_id UUID)
