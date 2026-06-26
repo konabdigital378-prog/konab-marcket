@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Share2, Image, CheckCircle, Loader } from 'lucide-react';
+import { Download, Share2, Image as ImageIcon, CheckCircle, Loader } from 'lucide-react';
 import { toast } from './Toast';
 
 const SIZES = [
@@ -227,7 +227,7 @@ export default function PosterGenerator({ annonce, onClose }) {
         <div className="flag-strip" />
         <div className="modal-header">
           <div>
-            <h3><Image size={18} style={{ display: 'inline', marginRight: 8 }} /> Créer l'affiche</h3>
+            <h3><ImageIcon size={18} style={{ display: 'inline', marginRight: 8 }} /> Créer l'affiche</h3>
             <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, fontWeight: 400 }}>
               Téléchargez ou partagez sur les réseaux sociaux
             </p>
