@@ -241,6 +241,9 @@ CREATE TABLE IF NOT EXISTS livraisons (
   statut TEXT DEFAULT 'en_attente' CHECK (statut IN ('en_attente','acceptee','en_cours','livree','annulee')),
   prix_estime NUMERIC DEFAULT 0,
   prix_final NUMERIC,
+  photo_url TEXT,
+  note_livreur INTEGER CHECK (note_livreur >= 1 AND note_livreur <= 5),
+  commentaire TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

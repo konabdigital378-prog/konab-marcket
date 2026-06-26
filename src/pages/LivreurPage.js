@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus } from 'lucide-react';
+import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus, Calculator, ExternalLink, Search } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { SkeletonCards } from '../components/Skeleton';
@@ -20,6 +20,19 @@ const STATUT_LIVRAISON = {
   livree: { label: 'Livrée', color: 'var(--vert)', icon: <CheckCircle size={14} /> },
   annulee: { label: 'Annulée', color: 'var(--danger)', icon: <XCircle size={14} /> },
 };
+
+const VILLES = ['Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Banfora', 'Ouahigouya', 'Kaya', 'Tenkodogo', 'Fada N\'Gourma', 'Dédougou'];
+
+function calcDistance(ville1, ville2) {
+  const dist = {
+    'Ouagadougou->Bobo-Dioulasso': 360, 'Ouagadougou->Koudougou': 100,
+    'Ouagadougou->Banfora': 440, 'Ouagadougou->Ouahigouya': 185,
+    'Ouagadougou->Kaya': 100, 'Bobo-Dioulasso->Ouagadougou': 360,
+    'Bobo-Dioulasso->Banfora': 85, 'Bobo-Dioulasso->Koudougou': 270,
+    'Koudougou->Ouagadougou': 100, 'Koudougou->Bobo-Dioulasso': 270,
+  };
+  return dist[`${ville1}->${ville2}`] || dist[`${ville2}->${ville1}`] || 0;
+}
 
 function LivreurCard({ livreur, onClick }) {
   return (
@@ -50,22 +63,44 @@ function LivreurCard({ livreur, onClick }) {
   );
 }
 
-function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
+function CalculettePrix({ tarifBase, tarifKm, villeRamassage, villeLivraison }) {
+  const distance = calcDistance(villeRamassage, villeLivraison);
+  const estime = (tarifBase || 1000) + (distance * (tarifKm || 200));
+  if (distance === 0 && villeRamassage === villeLivraison) return <span style={{ color: 'var(--text3)', fontSize: 13 }}>Sélectionnez deux villes différentes</span>;
+  if (!villeRamassage || !villeLivraison) return null;
+  return (
+    <div className="calculette-result">
+      <div><strong>Distance :</strong> {distance > 0 ? `${distance} km` : 'Même ville'}</div>
+      <div><strong>Prix estimé :</strong> <span className="prix-estime">{estime.toLocaleString()} FCFA</span></div>
+    </div>
+  );
+}
+
+function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
-    adresse_ramassage: '', ville_ramassage: 'Ouagadougou',
-    adresse_livraison: '', ville_livraison: 'Ouagadougou',
+    adresse_ramassage: '',
+    ville_ramassage: prefillVille || 'Ouagadougou',
+    adresse_livraison: '',
+    ville_livraison: 'Ouagadougou',
     contact_expediteur: user?.email || '',
     contact_destinataire: '',
     description_colis: '',
+    photo_url: '',
   });
   const [saving, setSaving] = useState(false);
+  const tarifKm = 200;
+
+  function calcEstime() {
+    const distance = calcDistance(form.ville_ramassage, form.ville_livraison);
+    return distance > 0 ? 1000 + (distance * tarifKm) : 1500;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from('livraisons').insert({
+    await supabase.from('livraisons').insert({
       annonce_id: annonceId || null,
       acheteur_id: user.id,
       adresse_ramassage: form.adresse_ramassage,
@@ -75,10 +110,11 @@ function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
       contact_expediteur: form.contact_expediteur,
       contact_destinataire: form.contact_destinataire,
       description_colis: form.description_colis,
-      prix_estime: 2000,
+      prix_estime: calcEstime(),
+      photo_url: form.photo_url || null,
     });
     setSaving(false);
-    if (!error) onClose(true);
+    onClose(true);
   }
 
   return (
@@ -103,7 +139,7 @@ function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
               <label className="form-label">Ville de ramassage</label>
               <select className="form-control" value={form.ville_ramassage}
                 onChange={e => setForm(f => ({ ...f, ville_ramassage: e.target.value }))}>
-                {['Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Banfora', 'Ouahigouya', 'Kaya'].map(v => <option key={v}>{v}</option>)}
+                {VILLES.map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="form-group">
@@ -116,8 +152,14 @@ function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
               <label className="form-label">Ville de livraison</label>
               <select className="form-control" value={form.ville_livraison}
                 onChange={e => setForm(f => ({ ...f, ville_livraison: e.target.value }))}>
-                {['Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Banfora', 'Ouahigouya', 'Kaya'].map(v => <option key={v}>{v}</option>)}
+                {VILLES.map(v => <option key={v}>{v}</option>)}
               </select>
+            </div>
+            <div className="card-surface" style={{ margin: '0 0 16px', padding: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--or)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Calculator size={14} /> Estimation du prix
+              </div>
+              <CalculettePrix villeRamassage={form.ville_ramassage} villeLivraison={form.ville_livraison} tarifKm={tarifKm} />
             </div>
             <div className="two-col">
               <div className="form-group">
@@ -135,7 +177,8 @@ function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
             <div className="form-group">
               <label className="form-label">Description du colis</label>
               <textarea className="form-control" rows={2} value={form.description_colis}
-                onChange={e => setForm(f => ({ ...f, description_colis: e.target.value }))} />
+                onChange={e => setForm(f => ({ ...f, description_colis: e.target.value }))}
+                placeholder="Poids, dimensions, contenu..." />
             </div>
           </div>
           <div className="modal-footer">
@@ -143,7 +186,7 @@ function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
               onClick={() => onClose()}>Annuler</motion.button>
             <motion.button type="submit" className="btn btn-primary" disabled={saving}
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              {saving ? 'Envoi...' : 'Demander livraison'}
+              {saving ? 'Envoi...' : `Demander (${calcEstime().toLocaleString()} FCFA)`}
             </motion.button>
           </div>
         </form>
@@ -152,32 +195,39 @@ function RequestDeliveryModal({ onClose, annonceId, vendeurNom, vendeurTel }) {
   );
 }
 
-export default function LivreurPage({ onBack }) {
+export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDelivery }) {
   const { user, profile } = useAuth();
-  const [tab, setTab] = useState('disponibles');
+  const [tab, setTab] = useState(initialDelivery ? 'mes_livraisons' : 'disponibles');
   const [livreurs, setLivreurs] = useState([]);
   const [monProfil, setMonProfil] = useState(null);
   const [mesLivraisons, setMesLivraisons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRequest, setShowRequest] = useState(false);
+  const [prefillVille] = useState('');
   const [form, setForm] = useState({ type_vehicule: 'moto', zone_couverture: '', tarif_base: 1000, tarif_par_km: 200 });
   const [saving, setSaving] = useState(false);
+  const [searchVille, setSearchVille] = useState('');
 
   useEffect(() => {
     loadData();
+    const sub = supabase.channel('livraisons_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'livraisons' }, () => loadData())
+      .subscribe();
+    return () => supabase.removeChannel(sub);
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadData() {
     setLoading(true);
-    const { data: l } = await supabase.from('livreurs')
+    const q = supabase.from('livreurs')
       .select('*, profiles:profiles!livreurs_id_fkey(nom, telephone, ville, entreprise_nom)')
       .order('note_moyenne', { ascending: false });
+    if (searchVille) q.ilike('zone_couverture', `%${searchVille}%`);
+    const { data: l } = await q;
     if (l) setLivreurs(l);
 
     if (user) {
       const { data: mp } = await supabase.from('livreurs').select('*').eq('id', user.id).single();
       if (mp) setMonProfil(mp);
-
       const { data: livs } = await supabase.from('livraisons')
         .select('*, annonces(titre)')
         .or(`acheteur_id.eq.${user.id},livreur_id.eq.${user.id}`)
@@ -191,23 +241,20 @@ export default function LivreurPage({ onBack }) {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from('livreurs').insert({
-      id: user.id,
-      type_vehicule: form.type_vehicule,
+    await supabase.from('livreurs').insert({
+      id: user.id, type_vehicule: form.type_vehicule,
       zone_couverture: form.zone_couverture,
       tarif_base: parseInt(form.tarif_base),
       tarif_par_km: parseInt(form.tarif_par_km),
     });
     setSaving(false);
-    if (!error) {
-      loadData();
-    }
+    loadData();
   }
 
   async function toggleDisponible() {
-    const { error } = await supabase.from('livreurs')
+    await supabase.from('livreurs')
       .update({ disponible: !monProfil.disponible }).eq('id', user.id);
-    if (!error) setMonProfil(p => ({ ...p, disponible: !p.disponible }));
+    setMonProfil(p => ({ ...p, disponible: !p.disponible }));
   }
 
   async function updateStatut(livraisonId, statut) {
@@ -221,6 +268,10 @@ export default function LivreurPage({ onBack }) {
   if (!user) {
     return (
       <div className="page">
+        <motion.button className="btn btn-ghost btn-sm" style={{ marginBottom: 16 }}
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onBack}>
+          <ArrowLeft size={18} /> Retour
+        </motion.button>
         <div className="empty-state">
           <Truck size={60} className="icon" />
           <h3>Connectez-vous pour accéder aux livreurs</h3>
@@ -230,8 +281,9 @@ export default function LivreurPage({ onBack }) {
     );
   }
 
-  const mesLivs = mesLivraisons.filter(l => l.livreur_id === user?.id);
-  const mesCmd = mesLivraisons.filter(l => l.acheteur_id === user?.id);
+  const mesLivs = mesLivraisons.filter(l => l.livreur_id === user.id);
+  const mesCmd = mesLivraisons.filter(l => l.acheteur_id === user.id);
+  const enAttenteCount = mesLivs.filter(l => l.statut === 'en_attente').length;
 
   return (
     <div className="page">
@@ -241,48 +293,79 @@ export default function LivreurPage({ onBack }) {
       </motion.button>
 
       <div className="profile-banner" style={{ marginBottom: 24 }}>
-        <div className="profile-avatar">
-          <Truck size={30} />
-        </div>
+        <div className="profile-avatar"><Truck size={30} /></div>
         <div className="profile-info">
           <div className="profile-name">Livraison Konab Marcket</div>
           <div className="profile-email">Faites livrer vos achats ou devenez coursier</div>
         </div>
       </div>
 
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}
+          onClick={() => setTab('disponibles')} style={{ cursor: 'pointer' }}>
+          <Bike size={20} style={{ color: 'var(--vert)', margin: '0 auto 8px' }} />
+          <div className="stat-num vert">{livreurs.filter(l => l.disponible).length}</div>
+          <div className="stat-label">Coursiers dispo</div>
+        </motion.div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}
+          onClick={() => setTab('mes_livraisons')} style={{ cursor: 'pointer' }}>
+          <Truck size={20} style={{ color: 'var(--or)', margin: '0 auto 8px' }} />
+          <div className="stat-num or">{mesCmd.length + mesLivs.length}</div>
+          <div className="stat-label">Mes livraisons</div>
+          {enAttenteCount > 0 && <div className="badge badge-danger" style={{ marginTop: 4 }}>{enAttenteCount} en attente</div>}
+        </motion.div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}
+          onClick={() => { setTab('demander'); setShowRequest(true); }} style={{ cursor: 'pointer' }}>
+          <Package size={20} style={{ color: 'white', margin: '0 auto 8px' }} />
+          <div className="stat-num blanc">{mesCmd.filter(c => c.statut !== 'livree').length}</div>
+          <div className="stat-label">Demandes actives</div>
+        </motion.div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}
+          onClick={() => setTab('devenir')} style={{ cursor: 'pointer' }}>
+          <Star size={20} style={{ color: 'var(--or)', margin: '0 auto 8px' }} />
+          <div className="stat-num or">{monProfil?.note_moyenne?.toFixed(1) || '—'}</div>
+          <div className="stat-label">Ma note</div>
+        </motion.div>
+      </div>
+
       <div className="tabs">
         <button className={`tab-btn ${tab === 'disponibles' ? 'active' : ''}`} onClick={() => setTab('disponibles')}>
-          <Bike size={16} /> Livreurs disponibles
+          <Bike size={16} /> Coursiers
         </button>
         <button className={`tab-btn ${tab === 'demander' ? 'active' : ''}`} onClick={() => setTab('demander')}>
           <Package size={16} /> Demander
         </button>
         <button className={`tab-btn ${tab === 'mes_livraisons' ? 'active' : ''}`} onClick={() => setTab('mes_livraisons')}>
-          <Truck size={16} /> Mes livraisons
+          <Truck size={16} /> Suivi {enAttenteCount > 0 && <span className="badge badge-danger" style={{ fontSize: 10, padding: '2px 6px', marginLeft: 4 }}>{enAttenteCount}</span>}
         </button>
-        {user && (
-          <button className={`tab-btn ${tab === 'devenir' ? 'active' : ''}`} onClick={() => setTab('devenir')}>
-            <User size={16} /> Devenir coursier
-          </button>
-        )}
+        <button className={`tab-btn ${tab === 'devenir' ? 'active' : ''}`} onClick={() => setTab('devenir')}>
+          <User size={16} /> Coursier
+        </button>
       </div>
 
       {tab === 'disponibles' && (
         <div>
-          <div className="section-header">
-            <div className="section-title" style={{ marginBottom: 20 }}>
-              <div className="section-title-bar" /> <Bike size={20} /> Coursiers disponibles
+          <div className="section-header" style={{ marginBottom: 16 }}>
+            <div className="section-title"><div className="section-title-bar" /> Coursiers disponibles</div>
+            <div className="navbar-search" style={{ maxWidth: 260 }}>
+              <Search size={14} style={{ marginLeft: 10, color: 'var(--text3)', flexShrink: 0 }} />
+              <input placeholder="Rechercher par ville..."
+                value={searchVille} onChange={e => setSearchVille(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && loadData()}
+                style={{ padding: '8px 10px', fontSize: 13 }}
+              />
             </div>
           </div>
           {loading ? <SkeletonCards count={3} />
-          : livreurs.length === 0 ? (
+          : livreurs.filter(l => l.disponible).length === 0 ? (
             <div className="empty-state">
               <Bike size={60} className="icon" />
               <h3>Aucun coursier disponible</h3>
-              <p>Soyez le premier à devenir coursier sur Konab Marcket !</p>
+              {searchVille && <p>Aucun coursier trouvé pour "{searchVille}"</p>}
+              {!searchVille && <p>Soyez le premier à devenir coursier !</p>}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {livreurs.filter(l => l.disponible).map(l => (
                 <LivreurCard key={l.id} livreur={{ ...l, nom: l.profiles?.nom || l.profiles?.entreprise_nom || 'Coursier' }} />
               ))}
@@ -293,14 +376,14 @@ export default function LivreurPage({ onBack }) {
 
       {tab === 'demander' && (
         <div>
-          <div className="card-surface" style={{ textAlign: 'center', padding: 40 }}>
-            <Package size={48} style={{ color: 'var(--vert)', marginBottom: 16 }} />
-            <h3 style={{ color: 'white', marginBottom: 8, fontSize: 18 }}>Besoin d'une livraison ?</h3>
-            <p style={{ color: 'var(--text2)', marginBottom: 20 }}>Remplissez le formulaire pour qu'un coursier prenne en charge votre colis.</p>
+          <div className="card-surface" style={{ textAlign: 'center', padding: 28 }}>
+            <Package size={44} style={{ color: 'var(--vert)', marginBottom: 14 }} />
+            <h3 style={{ color: 'white', marginBottom: 6, fontSize: 17 }}>Besoin d'une livraison ?</h3>
+            <p style={{ color: 'var(--text2)', marginBottom: 18, fontSize: 14 }}>Remplissez le formulaire pour qu'un coursier prenne en charge votre colis.</p>
             <motion.button className="btn btn-primary btn-lg"
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={() => setShowRequest(true)}>
-              <Plus size={18} /> Nouvelle demande de livraison
+              <Plus size={18} /> Nouvelle demande
             </motion.button>
           </div>
           {mesCmd.length > 0 && (
@@ -308,20 +391,28 @@ export default function LivreurPage({ onBack }) {
               <div className="section-title" style={{ margin: '24px 0 16px' }}>
                 <div className="section-title-bar" /> Mes demandes ({mesCmd.length})
               </div>
-              {mesCmd.map(l => (
-                <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                  <div className="livraison-card-top">
-                    <span className="livraison-annonce">{l.annonces?.titre || 'Livraison'}</span>
-                    <span className="livraison-statut" style={{ color: STATUT_LIVRAISON[l.statut]?.color }}>
-                      {STATUT_LIVRAISON[l.statut]?.icon} {STATUT_LIVRAISON[l.statut]?.label}
-                    </span>
-                  </div>
-                  <div className="livraison-card-body">
-                    <span><MapPin size={12} /> {l.ville_ramassage} → {l.ville_livraison}</span>
-                    <span><DollarSign size={12} /> {l.prix_estimo?.toLocaleString() || '—'} FCFA</span>
-                  </div>
-                </motion.div>
-              ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {mesCmd.map(l => (
+                  <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -2, borderColor: 'rgba(57,211,83,0.2)' }}
+                    onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id)}
+                    style={{ cursor: 'pointer' }}>
+                    <div className="livraison-card-top">
+                      <span className="livraison-annonce">{l.annonces?.titre || 'Livraison'}</span>
+                      <span className="livraison-statut" style={{ color: STATUT_LIVRAISON[l.statut]?.color }}>
+                        {STATUT_LIVRAISON[l.statut]?.icon} {STATUT_LIVRAISON[l.statut]?.label}
+                      </span>
+                    </div>
+                    <div className="livraison-card-body">
+                      <span><MapPin size={12} /> {l.ville_ramassage} → {l.ville_livraison}</span>
+                      <span><DollarSign size={12} /> {l.prix_estime?.toLocaleString() || '—'} FCFA</span>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--vert)', marginTop: 8 }}>
+                      <ExternalLink size={12} style={{ display: 'inline' }} /> Voir le détail
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -329,10 +420,8 @@ export default function LivreurPage({ onBack }) {
 
       {tab === 'mes_livraisons' && (
         <div>
-          <div className="section-header">
-            <div className="section-title" style={{ marginBottom: 20 }}>
-              <div className="section-title-bar" /> <Truck size={20} /> Livraisons ({mesLivs.length})
-            </div>
+          <div className="section-header" style={{ marginBottom: 16 }}>
+            <div className="section-title"><div className="section-title-bar" /> Livraisons ({mesLivs.length})</div>
             {monProfil && (
               <motion.button className={`btn ${monProfil.disponible ? 'btn-ghost' : 'btn-primary'} btn-sm`}
                 whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -345,57 +434,63 @@ export default function LivreurPage({ onBack }) {
             <div className="empty-state">
               <Truck size={60} className="icon" />
               <h3>Aucune livraison</h3>
-              <p>Les demandes de livraison apparaîtront ici.</p>
+              <p>Les demandes apparaîtront ici en temps réel.</p>
             </div>
           ) : (
-            mesLivs.map(l => (
-              <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="livraison-card-top">
-                  <span className="livraison-annonce">{l.annonces?.titre || 'Livraison'}</span>
-                  <span className="livraison-statut" style={{ color: STATUT_LIVRAISON[l.statut]?.color }}>
-                    {STATUT_LIVRAISON[l.statut]?.icon} {STATUT_LIVRAISON[l.statut]?.label}
-                  </span>
-                </div>
-                <div className="livraison-card-body">
-                  <span><MapPin size={12} /> {l.ville_ramassage} → {l.ville_livraison}</span>
-                  <span><Phone size={12} /> {l.contact_destinataire}</span>
-                </div>
-                {l.statut === 'en_attente' && (
-                  <div className="livraison-card-actions">
-                    <motion.button className="btn btn-primary btn-sm"
-                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                      onClick={() => updateStatut(l.id, 'acceptee')}>
-                      ✅ Accepter
-                    </motion.button>
-                    <motion.button className="btn btn-sm"
-                      style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)' }}
-                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                      onClick={() => updateStatut(l.id, 'annulee')}>
-                      Refuser
-                    </motion.button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {mesLivs.map(l => (
+                <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -2, borderColor: 'rgba(57,211,83,0.2)' }}
+                  onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id)}
+                  style={{ cursor: 'pointer' }}>
+                  <div className="livraison-card-top">
+                    <span className="livraison-annonce">{l.annonces?.titre || 'Livraison'}</span>
+                    <span className="livraison-statut" style={{ color: STATUT_LIVRAISON[l.statut]?.color }}>
+                      {STATUT_LIVRAISON[l.statut]?.icon} {STATUT_LIVRAISON[l.statut]?.label}
+                    </span>
                   </div>
-                )}
-                {l.statut === 'acceptee' && (
-                  <div className="livraison-card-actions">
-                    <motion.button className="btn btn-primary btn-sm"
-                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                      onClick={() => updateStatut(l.id, 'en_cours')}>
-                      🚚 En cours de livraison
-                    </motion.button>
+                  <div className="livraison-card-body">
+                    <span><MapPin size={12} /> {l.ville_ramassage} → {l.ville_livraison}</span>
+                    <span><Phone size={12} /> {l.contact_destinataire}</span>
+                    <span><DollarSign size={12} /> {l.prix_estime?.toLocaleString()} FCFA</span>
                   </div>
-                )}
-                {l.statut === 'en_cours' && (
-                  <div className="livraison-card-actions">
-                    <motion.button className="btn btn-primary btn-sm"
-                      style={{ background: 'linear-gradient(135deg, var(--vert), var(--vert-dark))' }}
-                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                      onClick={() => updateStatut(l.id, 'livree')}>
-                      ✅ Marquer comme livrée
-                    </motion.button>
-                  </div>
-                )}
-              </motion.div>
-            ))
+                  {l.statut === 'en_attente' && (
+                    <div className="livraison-card-actions" onClick={e => e.stopPropagation()}>
+                      <motion.button className="btn btn-primary btn-sm"
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => updateStatut(l.id, 'acceptee')}>
+                        ✅ Accepter
+                      </motion.button>
+                      <motion.button className="btn btn-sm"
+                        style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)' }}
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => updateStatut(l.id, 'annulee')}>
+                        Refuser
+                      </motion.button>
+                    </div>
+                  )}
+                  {l.statut === 'acceptee' && (
+                    <div className="livraison-card-actions" onClick={e => e.stopPropagation()}>
+                      <motion.button className="btn btn-primary btn-sm"
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => updateStatut(l.id, 'en_cours')}>
+                        🚚 En cours
+                      </motion.button>
+                    </div>
+                  )}
+                  {l.statut === 'en_cours' && (
+                    <div className="livraison-card-actions" onClick={e => e.stopPropagation()}>
+                      <motion.button className="btn btn-primary btn-sm"
+                        style={{ background: 'linear-gradient(135deg, var(--vert), var(--vert-dark))' }}
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => updateStatut(l.id, 'livree')}>
+                        ✅ Livrée
+                      </motion.button>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -432,7 +527,7 @@ export default function LivreurPage({ onBack }) {
                 <div className="stat-card">
                   <DollarSign size={20} style={{ color: 'white', margin: '0 auto 8px' }} />
                   <div className="stat-num blanc">{monProfil.tarif_base?.toLocaleString()}</div>
-                  <div className="stat-label">Tarif base (FCFA)</div>
+                  <div className="stat-label">Tarif base</div>
                 </div>
               </div>
               <motion.button className={`btn btn-lg btn-full ${monProfil.disponible ? 'btn-ghost' : 'btn-primary'}`}
@@ -444,10 +539,6 @@ export default function LivreurPage({ onBack }) {
           ) : (
             <motion.div className="card-surface" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <div className="card-surface-title"><Bike size={20} /> Devenir coursier Konab Marcket</div>
-              <p style={{ color: 'var(--text2)', marginBottom: 24, lineHeight: 1.7 }}>
-                Proposez vos services de livraison aux milliers d'utilisateurs de Konab Marcket. 
-                Fixez vos tarifs, votre zone et votre type de véhicule.
-              </p>
               <form onSubmit={devenirLivreur}>
                 <div className="form-group">
                   <label className="form-label">Type de véhicule</label>
@@ -487,6 +578,7 @@ export default function LivreurPage({ onBack }) {
       <AnimatePresence>
         {showRequest && (
           <RequestDeliveryModal
+            prefillVille={prefillVille}
             onClose={(saved) => { setShowRequest(false); if (saved) loadData(); }}
           />
         )}

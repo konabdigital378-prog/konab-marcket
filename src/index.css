@@ -2460,4 +2460,93 @@ select.form-control option {
   border-top: 1px solid var(--border);
 }
 
+/* ===== DELIVERY TIMELINE ===== */
+.delivery-timeline {
+  position: relative;
+  padding: 8px 0;
+}
+
+.delivery-timeline::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 28px;
+  bottom: 28px;
+  width: 2px;
+  background: rgba(255,255,255,0.08);
+}
+
+.timeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+  position: relative;
+}
+
+.timeline-dot {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+  flex-shrink: 0;
+  z-index: 1;
+  transition: var(--transition);
+}
+
+.timeline-step.done .timeline-dot {
+  background: var(--vert);
+  border-color: var(--vert);
+  color: white;
+  box-shadow: 0 0 16px rgba(57,211,83,0.3);
+}
+
+.timeline-step.current .timeline-dot {
+  border-color: var(--or);
+  color: var(--or);
+  box-shadow: 0 0 16px rgba(245,183,0,0.3);
+}
+
+.timeline-content { padding-top: 4px; }
+
+.timeline-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text3);
+  margin-bottom: 2px;
+}
+
+.timeline-step.done .timeline-title { color: white; }
+.timeline-step.current .timeline-title { color: var(--or); }
+
+.timeline-desc {
+  font-size: 13px;
+  color: var(--text3);
+}
+
+.timeline-step.done .timeline-desc { color: var(--text2); }
+
+/* ===== CALCULETTE PRIX ===== */
+.calculette-result {
+  font-size: 13px;
+  color: var(--text2);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.prix-estime {
+  font-size: 18px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--vert), var(--vert-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ===== BADGE VERT ===== */

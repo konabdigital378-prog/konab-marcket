@@ -14,6 +14,7 @@ import AnnonceDetailPage from './pages/AnnonceDetailPage';
 import VendeurPage from './pages/VendeurPage';
 import MessageriePage from './pages/MessageriePage';
 import LivreurPage from './pages/LivreurPage';
+import LivraisonDetailPage from './pages/LivraisonDetailPage';
 
 function AppInner() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
@@ -28,6 +29,7 @@ function AppInner() {
   const [detailId, setDetailId] = useState(null);
   const [vendeurId, setVendeurId] = useState(null);
   const [initialChat, setInitialChat] = useState(null);
+  const [livraisonDetailId, setLivraisonDetailId] = useState(null);
 
   if (typeof window !== 'undefined') {
     window.addEventListener('scroll', () => {
@@ -66,6 +68,15 @@ function AppInner() {
 
   function handleBackFromDetail() {
     nav('home');
+  }
+
+  function showLivraisonDetail(id) {
+    setLivraisonDetailId(id);
+    setPage('livraison_detail');
+  }
+
+  function showLivraisonFromAnnonce() {
+    setPage('livreur');
   }
 
   const initials = (profile?.nom || user?.email || '?').slice(0, 2).toUpperCase();
@@ -222,13 +233,16 @@ function AppInner() {
           {page === 'admin'     && isAdmin && <AdminPage />}
           {page === 'detail'    && <AnnonceDetailPage annonceId={detailId}
             onBack={handleBackFromDetail} onShowAuth={() => setShowAuth(true)}
-            onStartChat={startChat} />}
+            onStartChat={startChat} onShowLivraison={showLivraisonFromAnnonce} />}
           {page === 'vendeur'   && <VendeurPage vendeurId={vendeurId}
             onBack={handleBackFromDetail} onShowDetail={showDetail} />}
           {page === 'messagerie' && <MessageriePage
             onBack={() => nav('home')} initialChat={initialChat}
             onShowDetail={showDetail} />}
-          {page === 'livreur' && <LivreurPage onBack={() => nav('home')} />}
+          {page === 'livreur' && <LivreurPage onBack={() => nav('home')}
+            onShowLivraisonDetail={showLivraisonDetail} />}
+          {page === 'livraison_detail' && <LivraisonDetailPage livraisonId={livraisonDetailId}
+            onBack={() => nav('livreur')} />}
         </motion.div>
       </AnimatePresence>
 

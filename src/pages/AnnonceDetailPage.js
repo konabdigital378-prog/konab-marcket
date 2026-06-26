@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Eye, Calendar, Heart, Share2, MessageCircle, ShoppingBag, Star, Store, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MapPin, Eye, Calendar, Heart, Share2, MessageCircle, ShoppingBag, Star, Store, ChevronRight, Truck } from 'lucide-react';
 import { supabase, TYPE_ANNONCE } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { useAuth } from '../hooks/useAuth';
@@ -10,7 +10,7 @@ const TYPE_CLASS = {
   formation: 'type-formation', article: 'type-article', recherche: 'type-recherche'
 };
 
-export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onStartChat }) {
+export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onStartChat, onShowLivraison }) {
   const [annonce, setAnnonce] = useState(null);
   const [similaires, setSimilaires] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -212,6 +212,14 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
                     <MessageCircle size={20} /> Envoyer un message
                   </motion.button>
                 )}
+
+                <motion.button className="btn btn-full btn-lg"
+                  style={{ background: 'rgba(245,183,0,0.08)', color: 'var(--or)', border: '1px solid rgba(245,183,0,0.2)', marginBottom: 10 }}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={onShowLivraison}
+                >
+                  <Truck size={20} /> Faire livrer
+                </motion.button>
 
                 <div className="detail-actions-row">
                   <motion.button className="detail-action-btn"
