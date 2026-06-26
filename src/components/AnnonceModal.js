@@ -98,6 +98,12 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
   }
 
   async function uploadImage(file) {
+    const { data: { session }, error: sesErr } = await supabase.auth.getSession();
+    if (sesErr || !session) throw new Error('Session expirée, reconnectez-vous');
+    if (session.expires_at && Date.now() / 1000 > session.expires_at) {
+      const { error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr) throw new Error('Session expirée, reconnectez-vous');
+    }
     const ext = file.name.split('.').pop().toLowerCase();
     const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
     const { error } = await supabase.storage.from('annonces').upload(path, file, { upsert: true, contentType: file.type });
