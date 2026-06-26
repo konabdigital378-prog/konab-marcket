@@ -410,6 +410,21 @@ ALTER TABLE annonces ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
 ALTER TABLE livreurs ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE livreurs ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 
+-- Table push notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  subscription JSONB NOT NULL,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, subscription)
+);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Push sub: proprietaire" ON push_subscriptions;
+CREATE POLICY "Push sub: proprietaire" ON push_subscriptions
+  FOR ALL USING (auth.uid() = user_id);
+
 -- Fonction vues
 CREATE OR REPLACE FUNCTION increment_vues(annonce_id UUID)
 RETURNS VOID AS $$

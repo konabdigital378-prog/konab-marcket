@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from './useAuth';
+import { subscribeToPush, requestPushPermission, unsubscribeFromPush } from '../utils/push';
 
 const NotifContext = createContext();
 
@@ -27,6 +28,7 @@ export function NotifProvider({ children, addToast }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showPanel, setShowPanel] = useState(false);
+  const [pushStatus, setPushStatus] = useState('checking');
   const channelRef = useRef(null);
   const lastSoundRef = useRef(0);
 
@@ -44,6 +46,13 @@ export function NotifProvider({ children, addToast }) {
   }, [user]);
 
   useEffect(() => { fetchNotifs(); }, [fetchNotifs]);
+
+  useEffect(() => {
+    if (!user) return;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      subscribeToPush(user.id);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -84,6 +93,23 @@ export function NotifProvider({ children, addToast }) {
     setUnreadCount(0);
   }
 
+  useEffect(() => {
+    if (!('Notification' in window)) { setPushStatus('unsupported'); return; }
+    setPushStatus(Notification.permission);
+  }, []);
+
+  async function enablePush() {
+    if (!user) return;
+    const result = await requestPushPermission(user.id);
+    setPushStatus(result);
+    return result;
+  }
+
+  async function disablePush() {
+    await unsubscribeFromPush(user?.id);
+    setPushStatus('denied');
+  }
+
   async function addNotif(notif) {
     if (!user) return;
     const { data } = await supabase.from('notifications').insert({
@@ -102,8 +128,9 @@ export function NotifProvider({ children, addToast }) {
 
   return (
     <NotifContext.Provider value={{
-      notifications, unreadCount, showPanel,
+      notifications, unreadCount, showPanel, pushStatus,
       setShowPanel, markAsRead, markAllRead, addNotif, fetchNotifs,
+      enablePush, disablePush,
     }}>
       {children}
     </NotifContext.Provider>

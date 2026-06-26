@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Bell, MessageCircle, Truck, TrendingUp, Flag, Crown, CheckCheck, ShoppingBag } from 'lucide-react';
+import { Bell, MessageCircle, Truck, TrendingUp, Flag, Crown, CheckCheck, ShoppingBag, BellOff, BellRing } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 
 const TYPE_ICONS = {
@@ -21,7 +21,7 @@ const TYPE_COLORS = {
 };
 
 export default function NotificationPanel({ onClose }) {
-  const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllRead, pushStatus, enablePush, disablePush } = useNotifications();
 
   return (
     <>
@@ -41,14 +41,32 @@ export default function NotificationPanel({ onClose }) {
               <span className="badge badge-danger" style={{ marginLeft: 8, fontSize: 10 }}>{unreadCount}</span>
             )}
           </div>
-          {unreadCount > 0 && (
-            <motion.button className="btn btn-sm"
-              style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', fontSize: 11 }}
-              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}
-              onClick={markAllRead}>
-              <CheckCheck size={12} /> Tout lu
-            </motion.button>
-          )}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            {pushStatus !== 'unsupported' && (
+              <motion.button
+                className="btn btn-sm"
+                style={{
+                  background: pushStatus === 'granted' ? 'rgba(57,211,83,0.1)' : 'rgba(255,255,255,0.05)',
+                  color: pushStatus === 'granted' ? 'var(--vert)' : 'var(--text3)',
+                  borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: 10, whiteSpace: 'nowrap',
+                }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}
+                onClick={() => pushStatus === 'granted' ? disablePush() : enablePush()}
+                title={pushStatus === 'granted' ? 'Notifications push activées' : 'Activer les notifications push'}
+              >
+                {pushStatus === 'granted' ? <BellRing size={12} style={{ marginRight: 3, display: 'inline' }} /> : <BellOff size={12} style={{ marginRight: 3, display: 'inline' }} />}
+                Push {pushStatus === 'granted' ? 'ON' : pushStatus === 'denied' ? 'OFF' : 'OFF'}
+              </motion.button>
+            )}
+            {unreadCount > 0 && (
+              <motion.button className="btn btn-sm"
+                style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', fontSize: 11 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}
+                onClick={markAllRead}>
+                <CheckCheck size={12} /> Tout lu
+              </motion.button>
+            )}
+          </div>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {notifications.length === 0 ? (
