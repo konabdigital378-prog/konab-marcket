@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle } from 'lucide-react';
+import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle, Bike } from 'lucide-react';
 import './index.css';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useToast, ToastContainer } from './components/Toast';
@@ -13,6 +13,7 @@ import AdminPage from './pages/AdminPage';
 import AnnonceDetailPage from './pages/AnnonceDetailPage';
 import VendeurPage from './pages/VendeurPage';
 import MessageriePage from './pages/MessageriePage';
+import LivreurPage from './pages/LivreurPage';
 
 function AppInner() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
@@ -170,6 +171,9 @@ function AppInner() {
                         <button className="dropdown-item" onClick={() => { nav('dashboard'); setMenuOpen(false); }}>
                           <Heart size={16} /> Mes favoris
                         </button>
+                        <button className="dropdown-item" onClick={() => { nav('livreur'); setMenuOpen(false); }}>
+                          <Bike size={16} /> Livraison
+                        </button>
                         <button className="dropdown-item" onClick={handleCreateClick}>
                           <Plus size={16} /> Publier une annonce
                         </button>
@@ -224,6 +228,7 @@ function AppInner() {
           {page === 'messagerie' && <MessageriePage
             onBack={() => nav('home')} initialChat={initialChat}
             onShowDetail={showDetail} />}
+          {page === 'livreur' && <LivreurPage onBack={() => nav('home')} />}
         </motion.div>
       </AnimatePresence>
 
@@ -247,16 +252,26 @@ function AppInner() {
                 <MessageCircle size={20} className="bnav-icon" />
                 Messages
               </button>
+              <button className={`bnav-item ${page === 'livreur' ? 'active' : ''}`} onClick={() => nav('livreur')}>
+                <Bike size={20} className="bnav-icon" />
+                Livraison
+              </button>
               <button className={`bnav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => nav('dashboard')}>
                 <LayoutDashboard size={20} className="bnav-icon" />
                 Dashboard
               </button>
             </>
           ) : (
-            <button className="bnav-item" onClick={() => setShowAuth(true)}>
-              <User size={20} className="bnav-icon" />
-              Connexion
-            </button>
+            <>
+              <button className="bnav-item" onClick={() => setShowAuth(true)}>
+                <User size={20} className="bnav-icon" />
+                Connexion
+              </button>
+              <button className="bnav-item" onClick={() => nav('livreur')}>
+                <Bike size={20} className="bnav-icon" />
+                Livraison
+              </button>
+            </>
           )}
           {!user && isAdmin ? (
             <button className={`bnav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => nav('admin')}>

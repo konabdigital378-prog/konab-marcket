@@ -2324,3 +2324,140 @@ select.form-control option {
 .conv-chat-empty {
   background: var(--noir2);
 }
+
+/* ===== LIVREUR ===== */
+.livreur-card {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: var(--transition);
+  cursor: default;
+}
+
+.livreur-card:hover {
+  border-color: rgba(57,211,83,0.2);
+}
+
+.livreur-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.livreur-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--or), var(--orange));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+}
+
+.livreur-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 2px;
+}
+
+.livreur-type {
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.livreur-note {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--or);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.livreur-livraisons {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.livreur-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text2);
+  align-items: center;
+}
+
+.livreur-card-body span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ===== LIVRAISON CARDS ===== */
+.livraison-card {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  transition: var(--transition);
+}
+
+.livraison-card:hover {
+  border-color: rgba(57,211,83,0.15);
+}
+
+.livraison-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.livraison-annonce {
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+}
+
+.livraison-statut {
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.livraison-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.livraison-card-body span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.livraison-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* ===== BADGE VERT ===== */

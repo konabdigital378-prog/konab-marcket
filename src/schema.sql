@@ -197,6 +197,76 @@ CREATE POLICY "Messages créables par auth" ON messages
 CREATE POLICY "Messages modifiables par participants" ON messages
   FOR UPDATE USING (auth.uid() = envoyeur_id OR auth.uid() = destinataire_id);
 
+-- Table livreurs (profils coursiers)
+CREATE TABLE IF NOT EXISTS livreurs (
+  id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  disponible BOOLEAN DEFAULT TRUE,
+  zone_couverture TEXT DEFAULT '',
+  type_vehicule TEXT DEFAULT 'moto' CHECK (type_vehicule IN ('moto','velo','voiture','camion','pied')),
+  tarif_base NUMERIC DEFAULT 1000,
+  tarif_par_km NUMERIC DEFAULT 200,
+  note_moyenne NUMERIC DEFAULT 5.0,
+  total_livraisons INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE livreurs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Livreurs publics" ON livreurs;
+DROP POLICY IF EXISTS "Livreurs modifiables" ON livreurs;
+DROP POLICY IF EXISTS "Livreurs créables" ON livreurs;
+
+CREATE POLICY "Livreurs publics" ON livreurs
+  FOR SELECT USING (true);
+
+CREATE POLICY "Livreurs modifiables" ON livreurs
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Livreurs créables" ON livreurs
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Table livraisons (commandes de livraison)
+CREATE TABLE IF NOT EXISTS livraisons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  annonce_id UUID REFERENCES annonces(id) ON DELETE SET NULL,
+  acheteur_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  livreur_id UUID REFERENCES livreurs(id) ON DELETE SET NULL,
+  adresse_ramassage TEXT NOT NULL,
+  adresse_livraison TEXT NOT NULL,
+  ville_ramassage TEXT NOT NULL,
+  ville_livraison TEXT NOT NULL,
+  contact_expediteur TEXT NOT NULL,
+  contact_destinataire TEXT NOT NULL,
+  description_colis TEXT DEFAULT '',
+  statut TEXT DEFAULT 'en_attente' CHECK (statut IN ('en_attente','acceptee','en_cours','livree','annulee')),
+  prix_estime NUMERIC DEFAULT 0,
+  prix_final NUMERIC,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE livraisons ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Livraisons visibles par participants" ON livraisons;
+DROP POLICY IF EXISTS "Livraisons créables" ON livraisons;
+DROP POLICY IF EXISTS "Livraisons modifiables par participants" ON livraisons;
+
+CREATE POLICY "Livraisons visibles par participants" ON livraisons
+  FOR SELECT USING (
+    auth.uid() = acheteur_id OR
+    auth.uid() = livreur_id OR
+    EXISTS (SELECT 1 FROM annonces WHERE annonces.id = livraisons.annonce_id AND annonces.user_id = auth.uid())
+  );
+
+CREATE POLICY "Livraisons créables" ON livraisons
+  FOR INSERT WITH CHECK (auth.uid() = acheteur_id);
+
+CREATE POLICY "Livraisons modifiables par participants" ON livraisons
+  FOR UPDATE USING (
+    auth.uid() = acheteur_id OR
+    auth.uid() = livreur_id
+  );
+
 -- Fonction vues
 CREATE OR REPLACE FUNCTION increment_vues(annonce_id UUID)
 RETURNS VOID AS $$
