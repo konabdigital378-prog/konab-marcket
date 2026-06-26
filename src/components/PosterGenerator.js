@@ -9,6 +9,51 @@ const SIZES = [
   { label: 'Bannière 16:9', w: 1200, h: 675 },
 ];
 
+function posterToSVG(annonce, w, h) {
+  const title = annonce?.titre || 'Annonce';
+  const price = annonce?.prix != null
+    ? (annonce.prix === 0 ? 'GRATUIT' : `${new Intl.NumberFormat('fr-FR').format(annonce.prix)} FCFA`)
+    : '';
+  const ville = annonce?.ville || '';
+  const type = annonce?.type || '';
+  const whatsapp = annonce?.whatsapp || '';
+  const typeLabel = { offre: 'OFFRE', emploi: 'EMPLOI', formation: 'FORMATION', article: 'ARTICLE', recherche: 'RECHERCHE' }[type] || '';
+
+  const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
+  const imageTag = imageUrl ? `<image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid cover"/>` : '';
+
+  const titleEsc = title.toUpperCase().replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const villeEsc = ville.replace(/&/g, '&amp;');
+  const waEsc = whatsapp.replace(/&/g, '&amp;');
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <defs>
+      <linearGradient id="ov" x1="0" y1="0.4" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
+        <stop offset="60%" stop-color="rgba(0,0,0,0.8)"/>
+        <stop offset="100%" stop-color="rgba(0,0,0,0.95)"/>
+      </linearGradient>
+      <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(0,0,0,0.5)"/>
+        <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+      </linearGradient>
+    </defs>
+    <rect width="${w}" height="${h}" fill="#0A0A0A"/>
+    ${imageTag}
+    <rect width="${w}" height="${h}" fill="url(#ov)"/>
+    <rect width="${w}" height="${h}" fill="url(#top)"/>
+    <text x="${w/2}" y="${h * 0.1}" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="${Math.min(w * 0.028, 24)}" fill="rgba(255,255,255,0.4)">${typeLabel}</text>
+    <text x="${w/2}" y="${h * 0.85}" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="${Math.min(w * 0.07, 60)}" fill="white" text-shadow="0 2px 10px rgba(0,0,0,0.5)">${titleEsc}</text>
+    ${price ? `<text x="${w/2}" y="${h * 0.78}" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="${Math.min(w * 0.05, 44)}" fill="white" text-shadow="0 2px 8px rgba(0,0,0,0.5)">${price}</text>` : ''}
+    ${ville ? `<text x="${w/2}" y="${h * 0.90}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${Math.min(w * 0.03, 26)}" fill="rgba(255,255,255,0.5)">${villeEsc}</text>` : ''}
+    ${waEsc ? `<text x="${w/2}" y="${h * 0.935}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${Math.min(w * 0.03, 26)}" fill="rgba(255,255,255,0.5)">${waEsc}</text>` : ''}
+    <line x1="${w * 0.25}" y1="${h * 0.945}" x2="${w * 0.75}" y2="${h * 0.945}" stroke="rgba(57,211,83,0.3)" stroke-width="1"/>
+    <text x="${w/2}" y="${h * 0.97}" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="${Math.min(w * 0.024, 20)}" fill="rgba(57,211,83,0.9)">Generé par Konab Marcket</text>
+    <text x="${w/2}" y="${h * 0.985}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${Math.min(w * 0.016, 14)}" fill="rgba(57,211,83,0.5)">Konab Marcket — Achetez mieux · Vendez plus</text>
+  </svg>`;
+  return new Blob([svg], { type: 'image/svg+xml' });
+}
+
 export default function PosterGenerator({ annonce, onClose }) {
   const canvasRef = useRef(null);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -30,30 +75,20 @@ export default function PosterGenerator({ annonce, onClose }) {
       canvas.width = w;
       canvas.height = h;
 
-      const bgColor = '#0A0A0A';
-
+      let loadedOk = false;
       const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
-      const img = new Image();
-
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        img.onerror = resolve;
-        img.src = imageUrl || '';
-      });
-
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, w, h);
-
-      if (imageUrl && img.width > 0) {
-        const imgScale = Math.max(w / img.width, h / img.height);
-        const imgW = img.width * imgScale;
-        const imgH = img.height * imgScale;
-        const imgX = (w - imgW) / 2;
-        const imgY = (h - imgH) / 2;
-        ctx.drawImage(img, imgX, imgY, imgW, imgH);
-      } else {
-        ctx.fillStyle = '#1A1A1A';
-        ctx.fillRect(0, 0, w, h);
+      if (imageUrl) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((resolve) => {
+          img.onload = () => { loadedOk = true; resolve(); };
+          img.onerror = resolve;
+          img.src = imageUrl;
+        });
+        if (loadedOk) {
+          const imgScale = Math.max(w / img.width, h / img.height);
+          ctx.drawImage(img, (w - img.width * imgScale) / 2, (h - img.height * imgScale) / 2, img.width * imgScale, img.height * imgScale);
+        }
       }
 
       const grad = ctx.createLinearGradient(0, h * 0.4, 0, h);
@@ -156,15 +191,18 @@ export default function PosterGenerator({ annonce, onClose }) {
         ctx.fillText(typeLabels[type] || type.toUpperCase(), w / 2, padX + infoSize);
       }
 
-      const blob = await new Promise(resolve => {
+      let blob = await new Promise(resolve => {
         try { canvas.toBlob(b => resolve(b), 'image/png'); }
         catch (_) { resolve(null); }
       });
+      if (!blob) {
+        blob = posterToSVG(annonce, w, h);
+      }
       if (blob) {
         setPosterBlob(blob);
         setPosterUrl(URL.createObjectURL(blob));
       } else {
-        setErrorMsg('Impossible de générer l\'image (peut-être un bloqueur de pub ?)');
+        setErrorMsg('Impossible de générer l\'image');
       }
       setImgLoaded(true);
     } catch (e) {
