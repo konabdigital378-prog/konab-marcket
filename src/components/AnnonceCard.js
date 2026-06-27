@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, MapPin, Eye, Star, Heart, MessageCircle, Navigation, Zap } from 'lucide-react';
+import { ShoppingBag, MapPin, Eye, Star, Heart, MessageCircle, Navigation, Zap, Volume2 } from 'lucide-react';
 import { supabase, TYPE_ANNONCE, haversine } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
@@ -55,6 +55,24 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
     if (!prix && prix !== 0) return null;
     if (prix === 0) return 'Gratuit';
     return new Intl.NumberFormat('fr-FR').format(prix) + ' FCFA';
+  }
+
+  const [playing, setPlaying] = useState(false);
+
+  function handleAudio(e) {
+    e.stopPropagation();
+    if (playing) { window.speechSynthesis?.cancel(); setPlaying(false); return; }
+    const text = `${annonce.titre}. ${annonce.description}. Prix: ${formatPrix(annonce.prix) || 'Négociable'}. Lieu: ${annonce.ville || 'Non précisé'}.`;
+    setPlaying(true);
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'fr-FR';
+    utt.rate = 0.85;
+    utt.onend = () => setPlaying(false);
+    utt.onerror = () => setPlaying(false);
+    const voices = window.speechSynthesis?.getVoices() || [];
+    const fr = voices.find(v => v.lang.startsWith('fr'));
+    if (fr) utt.voice = fr;
+    window.speechSynthesis?.speak(utt);
   }
 
   function handleWhatsApp(e) {
@@ -126,6 +144,10 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
               <Zap size={10} style={{ display: 'inline' }} /> Petit prix
             </span>
           )}
+          <button className={`audio-btn ${playing ? 'playing' : ''}`} onClick={handleAudio} title="Écouter l'annonce"
+            style={{ marginLeft: 'auto', width: 28, height: 28, border: 'none' }}>
+            <Volume2 size={13} />
+          </button>
         </div>
 
         <div className="product-card-title">{annonce.titre}</div>

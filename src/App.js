@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle, Bike, Sun, Moon, RefreshCw } from 'lucide-react';
+import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle, Bike, Sun, Moon, Mic, RefreshCw } from 'lucide-react';
 import './index.css';
 import { supabase } from './supabase';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { useVoiceSearch } from './hooks/useVoiceSearch';
 import { ThemeProvider, useTheme } from './hooks/useTheme';
 import { useToast, ToastContainer } from './components/Toast';
 import { NotifProvider, useNotifications } from './hooks/useNotifications';
@@ -35,6 +36,12 @@ function AppInner() {
   const [scrolled, setScrolled] = useState(false);
   const [liveIndicator, setLiveIndicator] = useState(false);
   const liveTimer = useRef(null);
+
+  const handleVoiceResult = (transcript) => {
+    setSearchQuery(transcript);
+    nav('home');
+  };
+  const { listening, supported: voiceSupported, startListening } = useVoiceSearch(handleVoiceResult);
 
   const [detailId, setDetailId] = useState(null);
   const [vendeurId, setVendeurId] = useState(null);
@@ -130,6 +137,20 @@ function AppInner() {
                 onClick={() => { nav('home'); }}>
                 <Search size={18} />
               </motion.button>
+              {voiceSupported && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                  onClick={startListening}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%', border: 'none',
+                    background: listening ? 'var(--danger)' : 'var(--vert)',
+                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', flexShrink: 0,
+                    animation: listening ? 'pulse 1s infinite' : 'none',
+                  }}>
+                  <Mic size={14} />
+                </motion.button>
+              )}
             </div>
           </div>
 

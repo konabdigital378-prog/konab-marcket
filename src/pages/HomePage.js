@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ArrowRight, Sparkles, TrendingUp, Package, Store, Briefcase, X, Plus, User, Crosshair, Zap } from 'lucide-react';
+import { Search, ArrowRight, Sparkles, TrendingUp, Package, Store, Briefcase, X, Plus, User, Crosshair, Zap, HelpCircle, Volume2 } from 'lucide-react';
 import { supabase, SECTEURS, TYPE_ANNONCE, haversine } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { SkeletonCards } from '../components/Skeleton';
 import { FadeIn } from '../hooks/useFadeIn';
 import { useAuth } from '../hooks/useAuth';
+import { speak } from '../hooks/useVoiceSearch';
 
 const VILLES_SEARCH = ['Toutes les villes', 'Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Banfora', 'Ouahigouya', 'Kaya', 'Tenkodogo', 'Fada N\'Gourma', 'Dédougou'];
 
@@ -42,6 +43,8 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
   const [locating, setLocating] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [heroPlaying, setHeroPlaying] = useState(false);
   const searchRef = useRef(null);
   const { user } = useAuth();
 
@@ -165,6 +168,27 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
               La marketplace intelligente qui connecte acheteurs et vendeurs du Burkina Faso au monde entier. 
               Services, produits, emplois, formations — tout en un clic.
             </motion.p>
+            <motion.button
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                if (heroPlaying) { window.speechSynthesis?.cancel(); setHeroPlaying(false); return; }
+                setHeroPlaying(true);
+                const utt = new SpeechSynthesisUtterance('Konab Marcket. La marketplace intelligente du Burkina Faso. Achetez mieux, vendez plus, partout dans le monde. Services, produits, emplois, formations, tout en un clic.');
+                utt.lang = 'fr-FR'; utt.rate = 0.85;
+                utt.onend = () => setHeroPlaying(false); utt.onerror = () => setHeroPlaying(false);
+                const voices = window.speechSynthesis?.getVoices() || [];
+                const fr = voices.find(v => v.lang.startsWith('fr'));
+                if (fr) utt.voice = fr;
+                window.speechSynthesis?.speak(utt);
+              }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                borderRadius: 8, border: '1.5px solid rgba(255,255,255,0.2)', background: heroPlaying ? 'var(--vert)' : 'rgba(255,255,255,0.08)',
+                color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginBottom: 16,
+              }}>
+              <Volume2 size={14} /> {heroPlaying ? 'Écoute en cours...' : '🔊 Écouter la description'}
+            </motion.button>
             <motion.div className="hero-actions"
               initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}>
               {user ? (
@@ -244,6 +268,23 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
       </section>
 
       <div className="page">
+        <div className="quick-nav" style={{ padding: '0 20px', maxWidth: 800, margin: '-10px auto 20px' }}>
+          {[
+            { icon: '🛒', label: 'Acheter', action: () => setFilterType('offre') },
+            { icon: '📦', label: 'Articles', action: () => setFilterType('article') },
+            { icon: '💼', label: 'Emploi', action: () => setFilterType('emploi') },
+            { icon: '📚', label: 'Formations', action: () => setFilterType('formation') },
+            { icon: '🔧', label: 'Services', action: () => setFilterType('service') },
+            { icon: '📍', label: 'Près de moi', action: () => { setSortBy('distance'); handleLocate(); } },
+          ].map((q, i) => (
+            <motion.button key={i} className="quick-nav-btn" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={q.action}>
+              <span>{q.icon}</span>
+              <span>{q.label}</span>
+            </motion.button>
+          ))}
+        </div>
+
         {!user && (
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             style={{
@@ -408,6 +449,43 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
           </div>
         </FadeIn>
       </div>
+
+      {showHelp && (
+        <motion.div className="help-bubble" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
+          <div className="help-bubble-title">
+            <HelpCircle size={18} style={{ color: 'var(--vert)' }} /> Comment utiliser Konab Marcket ?
+          </div>
+          <div className="help-bubble-item">
+            <div className="help-bubble-icon" style={{ background: 'var(--vert-bg)' }}>🛒</div>
+            <div><strong>Acheter</strong> — Appuyez sur "Intéressé(e)" pour contacter le vendeur</div>
+          </div>
+          <div className="help-bubble-item">
+            <div className="help-bubble-icon" style={{ background: 'var(--orange-bg)' }}>📦</div>
+            <div><strong>Vendre</strong> — Appuyez sur "Publier" pour créer une annonce</div>
+          </div>
+          <div className="help-bubble-item">
+            <div className="help-bubble-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>🎤</div>
+            <div><strong>Vocal</strong> — Appuyez sur le microphone pour chercher par la voix</div>
+          </div>
+          <div className="help-bubble-item">
+            <div className="help-bubble-icon" style={{ background: 'rgba(139,92,246,0.1)' }}>🔊</div>
+            <div><strong>Écouter</strong> — Appuyez sur 🔊 pour écouter une annonce</div>
+          </div>
+          <div className="help-bubble-item">
+            <div className="help-bubble-icon" style={{ background: 'rgba(245,183,0,0.1)' }}>📍</div>
+            <div><strong>Localiser</strong> — Activez la localisation pour trouver les offres près de chez vous</div>
+          </div>
+          <button onClick={() => { setShowHelp(false); speak('Aide fermée. Bonne navigation sur Konab Marcket.'); }}
+            style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 8, border: 'none', background: 'var(--vert)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            ✅ Compris !
+          </button>
+        </motion.div>
+      )}
+
+      <motion.button className="help-fab" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+        onClick={() => { setShowHelp(h => !h); if (!showHelp) speak('Besoin d\'aide ? Apprenez comment utiliser Konab Marcket.'); }}>
+        {showHelp ? '✕' : '❓'}
+      </motion.button>
 
       <footer className="footer">
         <div className="flag-strip" />
