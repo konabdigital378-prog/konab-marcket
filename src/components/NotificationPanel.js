@@ -124,7 +124,21 @@ export function NotifBell() {
   return (
     <button className="nav-icon-btn notif-bell" onClick={() => setShowPanel(!showPanel)} title="Notifications">
       <Bell size={16} />
-      {unreadCount > 0 && <span className="notif-bell-dot" />}
+      {unreadCount > 0 && (
+        <span className="notif-badge-count" style={{
+          position: 'absolute', top: -4, right: -4,
+          background: '#FF3B30', color: 'white',
+          fontSize: 9, fontWeight: 900,
+          minWidth: 16, height: 16, borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 4px', lineHeight: 1,
+          boxShadow: '0 0 8px rgba(255,59,48,0.6)',
+          animation: 'badgePulse 2s ease-in-out infinite',
+          border: '2px solid var(--bg1)',
+        }}>
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
     </button>
   );
 }
