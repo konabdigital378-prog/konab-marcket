@@ -37,15 +37,6 @@ function playNotifSound() {
   } catch (_) {}
 }
 
-function playRemoteSound(url) {
-  try {
-    const audio = new Audio(url);
-    audio.volume = 0.8;
-    audio.play().catch(() => {});
-    setTimeout(() => { audio.src = ''; }, 5000);
-  } catch (_) {}
-}
-
 function syncBadgeToSW(count) {
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({
@@ -112,7 +103,11 @@ export function NotifProvider({ children, addToast }) {
   useEffect(() => {
     const handler = (event) => {
       if (event.data?.type === 'PLAY_NOTIF_SOUND') {
-        playRemoteSound(event.data.url);
+        const now = Date.now();
+        if (now - lastSoundRef.current > 2000) {
+          playNotifSound();
+          lastSoundRef.current = now;
+        }
       }
       if (event.data?.type === 'CLEAR_BADGE') {
         setUnreadCount(0);

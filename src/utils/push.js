@@ -12,8 +12,7 @@ function urlBase64ToUint8Array(base64) {
 export async function registerPushSW() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
   try {
-    const reg = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
-    await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.ready;
     return reg;
   } catch (_) { return null; }
 }
