@@ -555,6 +555,12 @@ input, select, textarea { font-family: var(--font); }
   color: white;
 }
 
+.type-card { transition: var(--transition); }
+.type-card:hover {
+  background: rgba(57,211,83,0.08) !important;
+  border-color: rgba(57,211,83,0.3) !important;
+}
+
 .hero-card .type-pills {
   display: flex;
   flex-wrap: wrap;
