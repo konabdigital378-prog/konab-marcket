@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, ArrowRight, Sparkles, TrendingUp, Package, Store, Briefcase, X, Plus, User, Crosshair, Zap, HelpCircle, Volume2 } from 'lucide-react';
+import { Search, ArrowRight, Sparkles, TrendingUp, Package, Store, Briefcase, X, Plus, User, Crosshair, Zap, Volume2 } from 'lucide-react';
 import { supabase, SECTEURS, TYPE_ANNONCE, haversine } from '../supabase';
 import { AnnonceCard } from '../components/AnnonceCard';
 import { SkeletonCards } from '../components/Skeleton';
@@ -451,34 +451,139 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
       </div>
 
       {showHelp && (
-        <motion.div className="help-bubble" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
-          <div className="help-bubble-title">
-            <HelpCircle size={18} style={{ color: 'var(--vert)' }} /> Comment utiliser Konab Marcket ?
-          </div>
-          <div className="help-bubble-item">
-            <div className="help-bubble-icon" style={{ background: 'var(--vert-bg)' }}>🛒</div>
-            <div><strong>Acheter</strong> — Appuyez sur "Intéressé(e)" pour contacter le vendeur</div>
-          </div>
-          <div className="help-bubble-item">
-            <div className="help-bubble-icon" style={{ background: 'var(--orange-bg)' }}>📦</div>
-            <div><strong>Vendre</strong> — Appuyez sur "Publier" pour créer une annonce</div>
-          </div>
-          <div className="help-bubble-item">
-            <div className="help-bubble-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>🎤</div>
-            <div><strong>Vocal</strong> — Appuyez sur le microphone pour chercher par la voix</div>
-          </div>
-          <div className="help-bubble-item">
-            <div className="help-bubble-icon" style={{ background: 'rgba(139,92,246,0.1)' }}>🔊</div>
-            <div><strong>Écouter</strong> — Appuyez sur 🔊 pour écouter une annonce</div>
-          </div>
-          <div className="help-bubble-item">
-            <div className="help-bubble-icon" style={{ background: 'rgba(245,183,0,0.1)' }}>📍</div>
-            <div><strong>Localiser</strong> — Activez la localisation pour trouver les offres près de chez vous</div>
-          </div>
-          <button onClick={() => { setShowHelp(false); speak('Aide fermée. Bonne navigation sur Konab Marcket.'); }}
-            style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 8, border: 'none', background: 'var(--vert)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-            ✅ Compris !
-          </button>
+        <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onClick={e => e.target === e.currentTarget && setShowHelp(false)}>
+          <motion.div className="modal" style={{ maxWidth: 480, maxHeight: '85vh', overflowY: 'auto' }}
+            initial={{ opacity: 0, scale: 0.9, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 30 }}>
+            <div className="flag-strip" />
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 28 }}>❓</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>Guide d'utilisation</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text3)' }}>Comment utiliser Konab Marcket</p>
+                </div>
+              </div>
+              <motion.button className="modal-close" onClick={() => setShowHelp(false)}
+                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <X size={18} />
+              </motion.button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 24px' }}>
+              {/* ÉTAPE 1 : Acheter */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
+                style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '16px', background: 'rgba(57,211,83,0.06)', borderRadius: 14, border: '1px solid rgba(57,211,83,0.15)', marginBottom: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', fontWeight: 800 }}>1</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>🛒 Acheter un produit</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                    1. Cherchez un produit 🔍<br />
+                    2. Appuyez sur la photo 📷<br />
+                    3. Appuyez sur <strong>"Intéressé(e)"</strong> 💬<br />
+                    4. Le vendeur vous répond sur WhatsApp 📱
+                  </div>
+                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => speak('Pour acheter: cherchez un produit, appuyez sur la photo, puis appuyez sur intéressé. Le vendeur vous répond sur WhatsApp.')}
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid var(--vert)', background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  🔊
+                </motion.button>
+              </motion.div>
+
+              {/* ÉTAPE 2 : Vendre */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
+                style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '16px', background: 'var(--orange-bg)', borderRadius: 14, border: '1px solid rgba(245,166,35,0.15)', marginBottom: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', fontWeight: 800 }}>2</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>📦 Vendre un produit</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                    1. Créez un compte gratuit 👤<br />
+                    2. Appuyez sur <strong>"Publier"</strong> ➕<br />
+                    3. Ajoutez une photo 📷<br />
+                    4. Donnez un titre et un prix 💰<br />
+                    5. Appuyez sur <strong>"Publier"</strong> ✅
+                  </div>
+                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => speak('Pour vendre: créez un compte, appuyez sur publier, ajoutez une photo, donnez un titre et un prix, puis publiez.')}
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid var(--orange)', background: 'rgba(245,166,35,0.1)', color: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  🔊
+                </motion.button>
+              </motion.div>
+
+              {/* ÉTAPE 3 : Chercher avec la voix */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
+                style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '16px', background: 'rgba(99,102,241,0.06)', borderRadius: 14, border: '1px solid rgba(99,102,241,0.15)', marginBottom: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', fontWeight: 800 }}>3</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>🎤 Chercher avec la voix</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                    1. Appuyez sur le <strong>microphone</strong> 🎙️<br />
+                    2. Dites ce que vous cherchez<br />
+                    3. Les résultats apparaissent automatiquement ✨
+                  </div>
+                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => speak('Pour chercher avec la voix: appuyez sur le microphone, dites ce que vous cherchez, les résultats apparaissent automatiquement.')}
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #6366F1', background: 'rgba(99,102,241,0.1)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  🔊
+                </motion.button>
+              </motion.div>
+
+              {/* ÉTAPE 4 : Écouter */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}
+                style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '16px', background: 'rgba(139,92,246,0.06)', borderRadius: 14, border: '1px solid rgba(139,92,246,0.15)', marginBottom: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', fontWeight: 800 }}>4</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>🔊 Écouter une annonce</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                    Appuyez sur le bouton <strong>🔊</strong> sur n'importe quelle annonce pour écouter le titre, le prix et la description.
+                  </div>
+                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => speak('Pour écouter une annonce: appuyez sur le bouton audio pour écouter le titre, le prix et la description.')}
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #8B5CF6', background: 'rgba(139,92,246,0.1)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  🔊
+                </motion.button>
+              </motion.div>
+
+              {/* ÉTAPE 5 : Localiser */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
+                style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '16px', background: 'rgba(245,183,0,0.06)', borderRadius: 14, border: '1px solid rgba(245,183,0,0.15)', marginBottom: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--or)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, color: 'white', fontWeight: 800 }}>5</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>📍 Trouver près de chez moi</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+                    1. Appuyez sur <strong>"Ma position"</strong> 📡<br />
+                    2. Autorisez la localisation<br />
+                    3. Les produits près de vous apparaissent en premier 🏠
+                  </div>
+                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => speak('Pour trouver près de chez vous: appuyez sur ma position, autorisez la localisation, les produits près de vous apparaissent en premier.')}
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid var(--or)', background: 'rgba(245,183,0,0.1)', color: 'var(--or)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  🔊
+                </motion.button>
+              </motion.div>
+
+              {/* TIPS */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}
+                style={{ background: 'rgba(239,68,68,0.06)', borderRadius: 14, border: '1px solid rgba(239,68,68,0.15)', padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger)', marginBottom: 6 }}>💡 Astuce</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
+                  Appuyez sur le bouton 🔊 à côté de chaque étape pour écouter les instructions. Le guide vous lit automatiquement !
+                </div>
+              </motion.div>
+
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => { setShowHelp(false); speak('Guide fermé. Bonne navigation sur Konab Marcket.'); }}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, var(--vert), var(--vert-dark))', color: 'white', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 16px rgba(57,211,83,0.3)' }}>
+                ✅ J'ai compris !
+              </motion.button>
+            </div>
+          </motion.div>
         </motion.div>
       )}
 
