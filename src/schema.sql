@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   abonnement_expire TIMESTAMPTZ,
   entreprise_nom TEXT,
   entreprise_logo TEXT,
+  avatar_url TEXT,
   certifie BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -137,10 +138,12 @@ CREATE POLICY "Profils modifiables par admin" ON profiles
 -- STORAGE
 INSERT INTO storage.buckets (id, name, public) VALUES ('annonces', 'annonces', TRUE) ON CONFLICT DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('captures', 'captures', TRUE) ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', TRUE) ON CONFLICT DO NOTHING;
 
 DROP POLICY IF EXISTS "Images annonces publiques" ON storage.objects;
 DROP POLICY IF EXISTS "Upload annonces par auth" ON storage.objects;
 DROP POLICY IF EXISTS "Upload captures par auth" ON storage.objects;
+DROP POLICY IF EXISTS "Upload avatars par auth" ON storage.objects;
 
 CREATE POLICY "Images annonces publiques" ON storage.objects
   FOR SELECT USING (bucket_id = 'annonces');
@@ -151,20 +154,26 @@ CREATE POLICY "Upload annonces par auth" ON storage.objects
 CREATE POLICY "Upload captures par auth" ON storage.objects
   FOR INSERT WITH CHECK (bucket_id = 'captures' AND auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Upload avatars par auth" ON storage.objects;
+CREATE POLICY "Upload avatars par auth" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
+
 -- TRIGGER: crée profil avec nom+telephone depuis metadata
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, nom, telephone)
+  INSERT INTO public.profiles (id, email, nom, telephone, avatar_url)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'nom', split_part(NEW.email, '@', 1)),
-    COALESCE(NEW.raw_user_meta_data->>'telephone', '')
+    COALESCE(NEW.raw_user_meta_data->>'telephone', ''),
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', '')
   )
   ON CONFLICT (id) DO UPDATE SET
     nom = COALESCE(EXCLUDED.nom, profiles.nom),
-    telephone = COALESCE(EXCLUDED.telephone, profiles.telephone);
+    telephone = COALESCE(EXCLUDED.telephone, profiles.telephone),
+    avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -432,6 +441,7 @@ ALTER TABLE annonces ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 ALTER TABLE annonces ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
 ALTER TABLE livreurs ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE livreurs ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 -- Table push notifications
 CREATE TABLE IF NOT EXISTS push_subscriptions (

@@ -89,6 +89,7 @@ function AppInner() {
   function showSignalement(id) { setSignalementAnnonceId(id); }
 
   const initials = (profile?.nom || user?.email || '?').slice(0, 2).toUpperCase();
+  const avatarUrl = profile?.avatar_url;
 
   if (loading) {
     return (
@@ -164,7 +165,10 @@ function AppInner() {
                 <motion.button className="nav-icon-btn"
                   whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   onClick={() => setMenuOpen(m => !m)}>
-                  <span style={{ fontSize: 12, fontWeight: 800 }}>{initials}</span>
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: 12, fontWeight: 800 }}>{initials}</span>
+                  }
                 </motion.button>
                 <AnimatePresence>
                   {menuOpen && (

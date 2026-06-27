@@ -1,17 +1,28 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, Phone, X, Sparkles, LogIn } from 'lucide-react';
+import { Mail, Lock, User, Phone, X, Sparkles, LogIn, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { supabase, SUPABASE_URL } from '../supabase';
 
 export default function AuthModal({ onClose }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', nom: '', telephone: '' });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { signIn, signUp } = useAuth();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  function handleAvatarChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setError('Image trop lourde (max 2MB)'); return; }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -25,7 +36,28 @@ export default function AuthModal({ onClose }) {
         if (!form.nom.trim()) throw new Error('Le nom complet est requis');
         if (form.password.length < 6) throw new Error('Mot de passe : 6 caractères minimum');
         if (!form.telephone.trim()) throw new Error('Le numéro WhatsApp est requis');
-        await signUp(form.email, form.password, form.nom.trim(), form.telephone.trim());
+
+        let avatarUrl = '';
+        if (avatarFile) {
+          const ext = avatarFile.name.split('.').pop().toLowerCase() || 'jpg';
+          const path = `temp/${Date.now()}.${ext}`;
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (token) {
+            const uploadUrl = `${SUPABASE_URL}/storage/v1/object/avatars/${path}`;
+            const res = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': avatarFile.type, 'x-upsert': 'true' },
+              body: avatarFile,
+            });
+            if (res.ok) {
+              const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+              avatarUrl = publicUrl;
+            }
+          }
+        }
+
+        await signUp(form.email, form.password, form.nom.trim(), form.telephone.trim(), avatarUrl);
         setSuccess('Compte créé avec succès ! Vérifiez votre boîte email pour confirmer, puis connectez-vous.');
         setMode('login');
       }
@@ -130,6 +162,37 @@ export default function AuthModal({ onClose }) {
                   <input className="form-control" placeholder="+226 XX XX XX XX" value={form.telephone}
                     onChange={e => set('telephone', e.target.value)} />
                   <p className="form-hint">📱 Les clients vous contacteront sur ce numéro</p>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <Camera size={12} style={{ marginRight: 4, display: 'inline' }} /> Photo de profil
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <label style={{
+                      width: 56, height: 56, borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.05)', border: '2px dashed rgba(255,255,255,0.15)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', overflow: 'hidden', flexShrink: 0,
+                    }}>
+                      {avatarPreview
+                        ? <img src={avatarPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <Camera size={20} style={{ color: 'var(--text3)' }} />
+                      }
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+                    </label>
+                    <div>
+                      <div style={{ fontSize: 13, color: 'var(--text2)' }}>Ajoutez une photo</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>PNG, JPG max 2MB</div>
+                    </div>
+                    {avatarPreview && (
+                      <motion.button type="button" className="btn btn-ghost btn-sm"
+                        style={{ fontSize: 11, padding: '4px 10px', color: 'var(--danger)' }}
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={() => { setAvatarFile(null); setAvatarPreview(''); }}>
+                        Suppr.
+                      </motion.button>
+                    )}
+                  </div>
                 </div>
               </>
             )}

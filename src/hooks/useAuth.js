@@ -38,12 +38,12 @@ export function AuthProvider({ children }) {
 
   // INSCRIPTION — passe nom+telephone dans les metadata Supabase
   // Le trigger SQL les lit et crée le profil automatiquement
-  async function signUp(email, password, nom, telephone) {
+  async function signUp(email, password, nom, telephone, avatarUrl) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { nom, telephone }   // ← metadata lue par le trigger
+        data: { nom, telephone, avatar_url: avatarUrl || '' }
       }
     });
     if (error) throw error;
