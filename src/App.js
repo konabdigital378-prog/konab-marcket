@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle, Bike, Menu, ChevronDown, Globe, Package } from 'lucide-react';
+import { Search, Plus, User, LogOut, LayoutDashboard, Shield, ShoppingBag, Heart, MessageCircle, Bike, Sun, Moon, RefreshCw } from 'lucide-react';
 import './index.css';
+import { supabase } from './supabase';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import { ThemeProvider } from './hooks/useTheme';
+import { ThemeProvider, useTheme } from './hooks/useTheme';
 import { useToast, ToastContainer } from './components/Toast';
 import { NotifProvider, useNotifications } from './hooks/useNotifications';
 import NotificationPanel, { NotifBell } from './components/NotificationPanel';
@@ -23,6 +24,7 @@ import CategoriesPage from './pages/CategoriesPage';
 
 function AppInner() {
   const { user, profile, isAdmin, signOut, loading } = useAuth();
+  const { dark, toggleTheme } = useTheme();
   const { toasts, addToast } = useToast();
   const { showPanel, setShowPanel, unreadCount } = useNotifications();
   const [page, setPage] = useState('home');
@@ -31,7 +33,8 @@ function AppInner() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
-  const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [liveIndicator, setLiveIndicator] = useState(false);
+  const liveTimer = useRef(null);
 
   const [detailId, setDetailId] = useState(null);
   const [vendeurId, setVendeurId] = useState(null);
@@ -41,10 +44,29 @@ function AppInner() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const handleScroll = () => { setScrolled(window.scrollY > 40); };
+    const handleScroll = () => {
+      const s = window.scrollY > 40;
+      if (s !== scrolled) setScrolled(s);
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [scrolled]);
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel('db-changes');
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'annonces' }, showLiveIndicator);
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `destinataire_id=eq.${user.id}` }, showLiveIndicator);
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'livraisons', filter: `acheteur_id=eq.${user.id}` }, showLiveIndicator);
+    channel.subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  function showLiveIndicator() {
+    setLiveIndicator(true);
+    if (liveTimer.current) clearTimeout(liveTimer.current);
+    liveTimer.current = setTimeout(() => setLiveIndicator(false), 3000);
+  }
 
   function nav(p) { setPage(p); setMenuOpen(false); window.scrollTo(0, 0); }
   function showDetail(annonceId) { setDetailId(annonceId); nav('detail'); }
@@ -71,9 +93,9 @@ function AppInner() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 20, background: 'white' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 20, background: 'var(--bg)' }}>
         <motion.img src="/logokb.png" alt="Konab Marcket"
-          style={{ width: 60, height: 60, borderRadius: 16, objectFit: 'contain', padding: 4 }}
+          style={{ width: 60, height: 60, borderRadius: 16, objectFit: 'contain', background: 'white', padding: 4 }}
           animate={{ scale: [1, 1.05, 1], opacity: [0.8, 1, 0.8] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
         <div className="spinner" />
@@ -84,48 +106,45 @@ function AppInner() {
 
   return (
     <div>
-      <header className={`header ${scrolled ? 'scrolled' : ''}`}>
-        <div className="header-inner">
-          <motion.div className="header-logo" onClick={() => nav('home')}
+      <motion.nav className={`navbar ${scrolled ? 'scrolled' : ''}`}
+        initial={{ y: -80 }} animate={{ y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}>
+        <div className="navbar-inner">
+          <motion.div className="navbar-logo" onClick={() => nav('home')}
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <img src="/logokb.png" alt="Konab" />
-            <span className="header-logo-text">Konab <span>Marcket</span></span>
+            <img src="/logokb.png" alt="Konab Marcket" className="logo-img" />
+            <div className="logo-text">
+              <span className="logo-name">Konab Marcket</span>
+              <span className="logo-tagline">Achetez mieux • Vendez plus</span>
+            </div>
           </motion.div>
 
-          <button className="header-cat-btn" onClick={() => setCatMenuOpen(o => !o)}
-            style={{ position: 'relative' }}>
-            <Menu size={16} /> <span>Catégories</span> <ChevronDown size={14} />
-            <AnimatePresence>
-              {catMenuOpen && (
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-                  style={{ position: 'absolute', top: '100%', left: 0, marginTop: 8, background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)', zIndex: 300, width: 200, padding: '6px 0' }}
-                  onClick={() => setCatMenuOpen(false)}>
-                  {['Toutes les catégories', 'Informatique', 'Téléphonie', 'Mode', 'Immobilier', 'Véhicules', 'Alimentation', 'Éducation', 'Services', 'Emploi', 'Santé', 'Sport', 'Agriculture', 'Autre'].map(c => (
-                    <button key={c} onClick={() => nav('categories')}
-                      style={{ display: 'block', width: '100%', padding: '10px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)' }}>
-                      {c}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </button>
-
-          <div className="header-search">
-            <Search size={16} className="header-search-icon" />
-            <input placeholder="Rechercher produits, services, catégories..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') nav('home'); }} />
+          <div className="navbar-center">
+            <div className="navbar-search" style={{ position: 'relative' }}>
+              <Search size={16} style={{ marginLeft: 14, color: 'var(--text3)', flexShrink: 0 }} />
+              <input placeholder="Rechercher produits, services, catégories..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { nav('home'); } }} />
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={() => { nav('home'); }}>
+                <Search size={18} />
+              </motion.button>
+            </div>
           </div>
 
-          <div className="header-actions">
-            {user && (
-              <button className="header-action" onClick={() => nav('dashboard')} title="Favoris">
-                <Heart size={20} />
-                <span className="header-action-label">Favoris</span>
-              </button>
+          <div className="navbar-actions">
+            {liveIndicator && (
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: 'var(--vert)', background: 'rgba(57,211,83,0.1)', padding: '4px 10px', borderRadius: 100 }}>
+                <RefreshCw size={12} className="spin-slow" /> LIVE
+              </motion.div>
             )}
+
+            <button className="theme-toggle" onClick={toggleTheme} title={dark ? 'Mode clair' : 'Mode sombre'}>
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
             {user && (
               <div style={{ position: 'relative' }}>
                 <NotifBell />
@@ -134,50 +153,55 @@ function AppInner() {
                 </AnimatePresence>
               </div>
             )}
-            <button className="header-lang" title="Langue">
-              <Globe size={16} /> FR
-            </button>
+
             <motion.button className="btn btn-primary btn-sm"
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={handleCreateClick}>
               <Plus size={16} /> <span>Publier</span>
             </motion.button>
+
             {user ? (
               <div style={{ position: 'relative' }}>
-                <button className="header-user" onClick={() => setMenuOpen(o => !o)}>
-                  <div className="header-user-avatar">
-                    {avatarUrl
-                      ? <img src={avatarUrl} alt="" />
-                      : <span>{initials}</span>
-                    }
-                  </div>
-                  <span className="header-user-name">{profile?.nom || 'Mon compte'}</span>
-                  <ChevronDown size={14} style={{ color: 'var(--text3)' }} />
-                </button>
+                <motion.button className="nav-icon-btn"
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => setMenuOpen(m => !m)}>
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: 12, fontWeight: 800 }}>{initials}</span>
+                  }
+                </motion.button>
                 <AnimatePresence>
                   {menuOpen && (
                     <>
                       <div style={{ position: 'fixed', inset: 0, zIndex: 399 }} onClick={() => setMenuOpen(false)} />
-                      <motion.div className="dropdown"
-                        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                      <motion.div className="dropdown-menu"
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.97 }}
                         transition={{ duration: 0.15 }}>
-                        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', fontSize: 13, color: 'var(--text3)', fontWeight: 500 }}>{user.email}</div>
-                        <button className="dropdown-item" onClick={() => nav('dashboard')}><LayoutDashboard size={16} /> Tableau de bord</button>
+                        <div className="dropdown-header">{user.email}</div>
+                        {profile?.abonnement && profile.abonnement !== 'basic' && (
+                          <div style={{ padding: '4px 18px 10px' }}>
+                            <span className="badge badge-gold">{profile.abonnement === 'certified' ? 'Certifié' : 'Premium'}</span>
+                          </div>
+                        )}
+                        <div className="dropdown-separator" />
+                        <button className="dropdown-item" onClick={() => nav('dashboard')}><LayoutDashboard size={16} /> Mon tableau de bord</button>
                         <button className="dropdown-item" onClick={() => { nav('messagerie'); setMenuOpen(false); }}><MessageCircle size={16} /> Messagerie</button>
-                        <button className="dropdown-item" onClick={() => { nav('dashboard'); setMenuOpen(false); }}><Heart size={16} /> Favoris</button>
-                        <button className="dropdown-item" onClick={() => { nav('categories'); setMenuOpen(false); }}><Package size={16} /> Catégories</button>
+                        <button className="dropdown-item" onClick={() => { nav('dashboard'); setMenuOpen(false); }}><Heart size={16} /> Mes favoris</button>
+                        <button className="dropdown-item" onClick={() => { nav('categories'); setMenuOpen(false); }}><ShoppingBag size={16} /> Catégories</button>
                         <button className="dropdown-item" onClick={() => { nav('livreur'); setMenuOpen(false); }}><Bike size={16} /> Livraison</button>
-                        <button className="dropdown-item" onClick={handleCreateClick}><Plus size={16} /> Publier</button>
-                        {isAdmin && <><div className="dropdown-divider" /><button className="dropdown-item" onClick={() => nav('admin')}><Shield size={16} /> Administration</button></>}
-                        <div className="dropdown-divider" />
-                        <button className="dropdown-item" onClick={handleSignOut} style={{ color: 'var(--text3)' }}><LogOut size={16} /> Déconnexion</button>
+                        <button className="dropdown-item" onClick={handleCreateClick}><Plus size={16} /> Publier une annonce</button>
+                        {isAdmin && (<> <div className="dropdown-separator" /><button className="dropdown-item danger" onClick={() => nav('admin')}><Shield size={16} /> Administration</button></>)}
+                        <div className="dropdown-separator" />
+                        <button className="dropdown-item" onClick={handleSignOut} style={{ color: 'var(--text2)' }}><LogOut size={16} /> Déconnexion</button>
                       </motion.div>
                     </>
                   )}
                 </AnimatePresence>
               </div>
             ) : (
-              <motion.button className="btn btn-secondary btn-sm"
+              <motion.button className="btn btn-ghost btn-sm"
                 whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={() => setShowAuth(true)}>
                 <User size={16} /> Connexion
@@ -185,118 +209,68 @@ function AppInner() {
             )}
           </div>
         </div>
-      </header>
+      </motion.nav>
 
-      <main>
-        <AnimatePresence mode="wait">
-          <motion.div key={page + (detailId || '') + (vendeurId || '')}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}>
-            {page === 'home'      && <HomePage key={searchQuery} searchQuery={searchQuery}
-              onShowAuth={() => setShowAuth(true)} onShowCreate={handleCreateClick}
-              onShowDetail={showDetail} onShowVendeur={showVendeur} />}
-            {page === 'dashboard' && user && <DashboardPage onShowCreate={() => setShowCreate(true)} />}
-            {page === 'admin'     && isAdmin && <AdminPage />}
-            {page === 'detail'    && <AnnonceDetailPage annonceId={detailId}
-              onBack={handleBackFromDetail} onShowAuth={() => setShowAuth(true)}
-              onStartChat={startChat} onShowLivraison={showLivraisonFromAnnonce}
-              onShowSignalement={showSignalement} />}
-            {page === 'vendeur'   && <VendeurPage vendeurId={vendeurId}
-              onBack={handleBackFromDetail} onShowDetail={showDetail} />}
-            {page === 'messagerie' && <MessageriePage onBack={() => nav('home')} initialChat={initialChat} onShowDetail={showDetail} onShowVendeur={showVendeur} />}
-            {page === 'livreur' && <LivreurPage onBack={() => nav('home')} onShowLivraisonDetail={showLivraisonDetail} />}
-            {page === 'livraison_detail' && <LivraisonDetailPage livraisonId={livraisonDetailId} onBack={() => nav('livreur')} />}
-            {page === 'categories' && <CategoriesPage onShowDetail={showDetail} />}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      <AnimatePresence mode="wait">
+        <motion.div key={page + (detailId || '') + (vendeurId || '')}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}>
+          {page === 'home'      && <HomePage key={searchQuery} searchQuery={searchQuery}
+            onShowAuth={() => setShowAuth(true)} onShowCreate={handleCreateClick}
+            onShowDetail={showDetail} onShowVendeur={showVendeur} />}
+          {page === 'dashboard' && user && <DashboardPage onShowCreate={() => setShowCreate(true)} />}
+          {page === 'admin'     && isAdmin && <AdminPage />}
+          {page === 'detail'    && <AnnonceDetailPage annonceId={detailId}
+            onBack={handleBackFromDetail} onShowAuth={() => setShowAuth(true)}
+            onStartChat={startChat} onShowLivraison={showLivraisonFromAnnonce}
+            onShowSignalement={showSignalement} />}
+          {page === 'vendeur'   && <VendeurPage vendeurId={vendeurId}
+            onBack={handleBackFromDetail} onShowDetail={showDetail} />}
+          {page === 'messagerie' && <MessageriePage onBack={() => nav('home')} initialChat={initialChat} onShowDetail={showDetail} onShowVendeur={showVendeur} />}
+          {page === 'livreur' && <LivreurPage onBack={() => nav('home')} onShowLivraisonDetail={showLivraisonDetail} />}
+          {page === 'livraison_detail' && <LivraisonDetailPage livraisonId={livraisonDetailId} onBack={() => nav('livreur')} />}
+          {page === 'categories' && <CategoriesPage onShowDetail={showDetail} />}
+        </motion.div>
+      </AnimatePresence>
 
       <div className="bottom-nav">
         <div className="bottom-nav-inner">
-          <button className={`bottom-nav-item ${page === 'home' ? 'active' : ''}`} onClick={() => nav('home')}>
-            <ShoppingBag size={22} /> <span className="bottom-nav-label">Accueil</span>
+          <button className={`bnav-item ${page === 'home' ? 'active' : ''}`} onClick={() => nav('home')}>
+            <ShoppingBag size={20} className="bnav-icon" /> Accueil
           </button>
-          <button className={`bottom-nav-item ${page === 'categories' ? 'active' : ''}`} onClick={() => nav('categories')}>
-            <Search size={22} /> <span className="bottom-nav-label">Catégories</span>
+          <button className={`bnav-item ${page === 'categories' ? 'active' : ''}`} onClick={() => nav('categories')}>
+            <Search size={20} className="bnav-icon" /> Catégories
           </button>
-          <button className="bottom-nav-item" onClick={handleCreateClick}>
-            <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--vert)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -20, boxShadow: '0 4px 12px rgba(52,199,89,0.3)' }}>
-              <Plus size={24} />
-            </div>
-            <span className="bottom-nav-label" style={{ marginTop: 2 }}>Publier</span>
+          <button className="bnav-item publish" onClick={handleCreateClick}>
+            <div className="bnav-pub-btn"><Plus size={24} /></div> Publier
           </button>
           {user ? (
             <>
-              <button className={`bottom-nav-item ${page === 'messagerie' ? 'active' : ''}`} onClick={() => nav('messagerie')}>
-                <MessageCircle size={22} />
-                {unreadCount > 0 && <span className="bottom-nav-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
-                <span className="bottom-nav-label">Messages</span>
+              <button className={`bnav-item ${page === 'messagerie' ? 'active' : ''}`} onClick={() => nav('messagerie')}>
+                <MessageCircle size={20} className="bnav-icon" /> Messages
+                {unreadCount > 0 && <span className="badge badge-danger" style={{ fontSize: 8, padding: '1px 5px', position: 'absolute', top: 2, right: 4 }}>{unreadCount}</span>}
               </button>
-              <button className={`bottom-nav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => nav('dashboard')}>
-                <User size={22} /> <span className="bottom-nav-label">Compte</span>
+              <button className={`bnav-item ${page === 'livreur' ? 'active' : ''}`} onClick={() => nav('livreur')}>
+                <Bike size={20} className="bnav-icon" /> Livraison
+              </button>
+              <button className={`bnav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => nav('dashboard')}>
+                <LayoutDashboard size={20} className="bnav-icon" /> Dashboard
               </button>
             </>
           ) : (
             <>
-              <button className="bottom-nav-item" onClick={() => setShowAuth(true)}>
-                <User size={22} /> <span className="bottom-nav-label">Connexion</span>
+              <button className="bnav-item" onClick={() => setShowAuth(true)}>
+                <User size={20} className="bnav-icon" /> Connexion
               </button>
-              <button className={`bottom-nav-item ${page === 'livreur' ? 'active' : ''}`} onClick={() => nav('livreur')}>
-                <Bike size={22} /> <span className="bottom-nav-label">Livraison</span>
+              <button className="bnav-item" onClick={() => nav('livreur')}>
+                <Bike size={20} className="bnav-icon" /> Livraison
               </button>
             </>
           )}
         </div>
       </div>
-
-      <footer className="footer">
-        <div className="footer-grid">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <img src="/logokb.png" alt="" style={{ height: 36, width: 'auto', filter: 'brightness(10)' }} />
-              <span style={{ fontFamily: 'var(--font-alt)', fontSize: 20, fontWeight: 800, color: 'white' }}>Konab <span style={{ color: '#34C759' }}>Marcket</span></span>
-            </div>
-            <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>La marketplace premium du Burkina Faso. Achetez et vendez en toute confiance.</p>
-            <div style={{ display: 'flex', gap: 12 }}>
-              {['📱', '💬', '📘', '▶️'].map((s, i) => (
-                <span key={i} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16 }}>{s}</span>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h4 className="footer-title">Marketplace</h4>
-            <button className="footer-link" onClick={() => nav('home')}>Accueil</button>
-            <button className="footer-link" onClick={() => nav('categories')}>Catégories</button>
-            <button className="footer-link" onClick={() => nav('livreur')}>Livraison</button>
-            <button className="footer-link" onClick={handleCreateClick}>Vendre</button>
-          </div>
-          <div>
-            <h4 className="footer-title">Aide</h4>
-            <button className="footer-link">Contact</button>
-            <button className="footer-link">FAQ</button>
-            <button className="footer-link">Conditions</button>
-            <button className="footer-link">Confidentialité</button>
-          </div>
-          <div>
-            <h4 className="footer-title">Compte</h4>
-            {user ? (
-              <>
-                <button className="footer-link" onClick={() => nav('dashboard')}>Mon compte</button>
-                <button className="footer-link" onClick={() => nav('messagerie')}>Mes messages</button>
-                <button className="footer-link" onClick={() => nav('dashboard')}>Mes annonces</button>
-                <button className="footer-link" onClick={() => nav('dashboard')}>Favoris</button>
-              </>
-            ) : (
-              <button className="footer-link" onClick={() => setShowAuth(true)}>Connexion</button>
-            )}
-          </div>
-        </div>
-        <div className="footer-bottom">
-          © 2026 Konab Marcket — Burkina Faso. Tous droits réservés.
-        </div>
-      </footer>
 
       <AnimatePresence>
         {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
