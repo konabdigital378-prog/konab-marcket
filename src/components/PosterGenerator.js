@@ -14,9 +14,9 @@ const VERT_DARK = '#0E7A32';
 const OR = '#F5B700';
 const NOIR = '#080808';
 
-function flagStrip(w, y = 0) {
+function flagStripSVG(w, y) {
   const bw = Math.round(w / 3);
-  return `<rect x="0" y="${y}" width="${bw}" height="6" fill="${VERT_DARK}"/><rect x="${bw}" y="${y}" width="${bw}" height="6" fill="${OR}"/><rect x="${bw*2}" y="${y}" width="${bw}" height="6" fill="${VERT}"/>`;
+  return `<rect x="0" y="${y}" width="${bw}" height="5" fill="${VERT_DARK}"/><rect x="${bw}" y="${y}" width="${bw}" height="5" fill="${OR}"/><rect x="${bw*2}" y="${y}" width="${bw}" height="5" fill="${VERT}"/>`;
 }
 
 function posterToSVG(annonce, w, h) {
@@ -26,65 +26,76 @@ function posterToSVG(annonce, w, h) {
     : '';
   const ville = annonce?.ville || '';
   const type = annonce?.type || '';
+  const secteur = annonce?.secteur || '';
   const whatsapp = annonce?.whatsapp || '';
   const typeLabel = { offre: 'OFFRE', emploi: 'EMPLOI', formation: 'FORMATION', article: 'ARTICLE', recherche: 'RECHERCHE' }[type] || '';
 
   const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
   const imageTag = imageUrl ? `<image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid cover"/>` : '';
 
-  const titleEsc = title.toUpperCase().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const titleEsc = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const villeEsc = ville.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const secteurEsc = secteur.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const waEsc = whatsapp.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-  const titleS = Math.round(Math.min(w * 0.065, 56));
-  const priceS = Math.round(Math.min(w * 0.045, 40));
-  const infoS = Math.round(Math.min(w * 0.028, 24));
-  const brandS = Math.round(Math.min(w * 0.021, 18));
+  const titleS = Math.min(w * 0.075, 64);
+  const priceS = Math.min(w * 0.05, 42);
+  const infoS = Math.min(w * 0.028, 24);
+  const brandS = Math.min(w * 0.022, 20);
+  const smallS = Math.min(w * 0.021, 18);
+
+  const hasImage = !!imageUrl;
+  const titleY = hasImage ? 0.82 : 0.62;
+  const priceY = hasImage ? 0.73 : 0.53;
+  const infoY = hasImage ? 0.89 : 0.72;
 
   return new Blob([`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
     <defs>
-      <linearGradient id="ov" x1="0" y1="0.35" x2="0" y2="1">
+      <linearGradient id="ov" x1="0" y1="0.45" x2="0" y2="1">
         <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
-        <stop offset="50%" stop-color="rgba(0,0,0,0.65)"/>
-        <stop offset="100%" stop-color="rgba(0,0,0,0.93)"/>
+        <stop offset="40%" stop-color="rgba(0,0,0,0.55)"/>
+        <stop offset="100%" stop-color="rgba(0,0,0,0.95)"/>
       </linearGradient>
-      <linearGradient id="glow" x1="0.5" y1="0" x2="0.5" y2="1">
-        <stop offset="0%" stop-color="rgba(57,211,83,0.15)"/>
+      <linearGradient id="badge-grad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#0E7A32"/>
+        <stop offset="50%" stop-color="#39D353"/>
+        <stop offset="100%" stop-color="#0E7A32"/>
+      </linearGradient>
+      <linearGradient id="bottom-line" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="rgba(57,211,83,0)"/>
+        <stop offset="50%" stop-color="rgba(57,211,83,0.3)"/>
         <stop offset="100%" stop-color="rgba(57,211,83,0)"/>
       </linearGradient>
+      <filter id="shadow">
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.5)"/>
+      </filter>
     </defs>
-
     <rect width="${w}" height="${h}" fill="${NOIR}"/>
     ${imageTag}
-    <rect width="${w}" height="${h}" fill="url(#ov)"/>
-
-    <rect x="0" y="0" width="${w}" height="6" fill="url(#glow)"/>
-    ${flagStrip(w)}
-
-    <g transform="translate(${w * 0.04}, ${h * 0.03})">
-      <image href="/logokb.png" width="${Math.round(w * 0.08)}" height="${Math.round(w * 0.08)}" preserveAspectRatio="xMidYMid meet"/>
-      <text x="${Math.round(w * 0.1)}" y="${Math.round(w * 0.045)}" font-family="sans-serif" font-weight="900" font-size="${Math.round(Math.min(w * 0.035, 30))}" fill="white">KONAB</text>
-      <text x="${Math.round(w * 0.1)}" y="${Math.round(w * 0.068)}" font-family="sans-serif" font-weight="600" font-size="${Math.round(Math.min(w * 0.02, 16))}" fill="${VERT}">MARCKET</text>
+    ${hasImage ? `<rect width="${w}" height="${h}" fill="url(#ov)"/>` : `<rect width="${w}" height="${h}" fill="rgba(0,0,0,0.92)"/>`}
+    ${flagStripSVG(w, 0)}
+    <g transform="translate(${w * 0.05}, ${h * 0.025})">
+      <image href="/logokb.png" width="${Math.round(w * 0.08)}" height="${Math.round(w * 0.08)}" preserveAspectRatio="xMidYMid meet" filter="url(#shadow)"/>
+      <text x="${Math.round(w * 0.1)}" y="${Math.round(w * 0.042)}" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="${Math.min(w * 0.035, 32)}" fill="white" letter-spacing="1">KONAB</text>
+      <text x="${Math.round(w * 0.1)}" y="${Math.round(w * 0.066)}" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="500" font-size="${Math.min(w * 0.02, 16)}" fill="${VERT}" letter-spacing="3">MARCKET</text>
     </g>
-
-    ${typeLabel ? `<rect x="${w/2 - 80}" y="${h * 0.13}" width="160" height="${Math.round(h * 0.04)}" rx="${Math.round(h * 0.02)}" fill="rgba(57,211,83,0.15)" stroke="${VERT}" stroke-width="1"/>
-      <text x="${w/2}" y="${h * 0.13 + Math.round(h * 0.026)}" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="${infoS}" fill="${VERT}">${typeLabel}</text>` : ''}
-
-    <text x="${w/2}" y="${h * 0.82}" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="${titleS}" fill="white">
-      <tspan x="${w/2}" dy="0">${titleEsc.split(' ').slice(0, 3).join(' ')}</tspan>
-      ${titleEsc.split(' ').length > 3 ? `<tspan x="${w/2}" dy="${titleS + 4}">${titleEsc.split(' ').slice(3, 6).join(' ')}</tspan>` : ''}
+    ${typeLabel ? `<rect x="${w/2 - 90}" y="${h * 0.11}" width="180" height="${Math.round(h * 0.035)}" rx="${Math.round(h * 0.018)}" fill="rgba(57,211,83,0.15)" stroke="${VERT}" stroke-width="1.5" filter="url(#shadow)"/>
+      <text x="${w/2}" y="${h * 0.11 + Math.round(h * 0.023)}" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="${infoS}" fill="${VERT}" letter-spacing="2">${typeLabel}</text>` : ''}
+    <text x="${w/2}" y="${h * titleY}" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="${titleS}" fill="white" filter="url(#shadow)">
+      ${titleEsc.length > 20 ? `<tspan x="${w/2}" dy="0">${titleEsc.slice(0, 20)}</tspan><tspan x="${w/2}" dy="${titleS + 6}">${titleEsc.slice(20, 42)}</tspan>` : `<tspan x="${w/2}" dy="0">${titleEsc}</tspan>`}
     </text>
-
-    ${price ? `<text x="${w/2}" y="${h * 0.74}" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="${priceS}" fill="${OR}">💰 ${price}</text>` : ''}
-
-    ${villeEsc ? `<text x="${w/2}" y="${h * 0.89}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${infoS}" fill="rgba(255,255,255,0.6)">📍 ${villeEsc}</text>` : ''}
-    ${waEsc ? `<text x="${w/2}" y="${h * 0.925}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${infoS}" fill="rgba(255,255,255,0.6)">📱 ${waEsc}</text>` : ''}
-
-    <rect x="${w * 0.04}" y="${h * 0.948}" width="${w * 0.92}" height="1" fill="rgba(57,211,83,0.2)"/>
-    ${flagStrip(w, h * 0.948 + 6)}
-    <image href="/logokb.png" width="${Math.round(w * 0.04)}" height="${Math.round(w * 0.04)}" x="${w * 0.06}" y="${h * 0.958}"/>
-    <text x="${Math.round(w * 0.12)}" y="${h * 0.975}" font-family="sans-serif" font-weight="700" font-size="${brandS}" fill="rgba(57,211,83,0.8)">Konab Marcket</text>
-    <text x="${Math.round(w * 0.12)}" y="${h * 0.991}" font-family="sans-serif" font-weight="400" font-size="${Math.round(brandS * 0.7)}" fill="rgba(57,211,83,0.4)">Achetez mieux · Vendez plus</text>
+    ${price ? `<text x="${w/2}" y="${h * priceY}" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="${priceS}" fill="${OR}" filter="url(#shadow)">${price}</text>` : ''}
+    <rect x="${w * 0.15}" y="${h * infoY}" width="${w * 0.7}" height="1" fill="url(#bottom-line)"/>
+    ${villeEsc ? `<text x="${w/2}" y="${h * infoY + h * 0.035}" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="${infoS}" fill="rgba(255,255,255,0.65)">${villeEsc}</text>` : ''}
+    ${secteurEsc ? `<text x="${w/2}" y="${h * infoY + h * 0.065}" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="${smallS}" fill="rgba(255,255,255,0.45)">${secteurEsc}</text>` : ''}
+    ${waEsc ? `<text x="${w/2}" y="${h * infoY + h * 0.095}" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="${smallS}" fill="rgba(57,211,83,0.7)">${waEsc}</text>` : ''}
+    <rect x="0" y="${h - 40}" width="${w}" height="40" fill="rgba(8,8,8,0.85)"/>
+    ${flagStripSVG(w, h - 40)}
+    <g transform="translate(${w * 0.05}, ${h - 34})">
+      <image href="/logokb.png" width="${Math.round(w * 0.035)}" height="${Math.round(w * 0.035)}" preserveAspectRatio="xMidYMid meet"/>
+      <text x="${Math.round(w * 0.055)}" y="${Math.round(w * 0.025)}" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="${brandS}" fill="rgba(57,211,83,0.8)">Konab Marcket</text>
+      <text x="${Math.round(w * 0.055)}" y="${Math.round(w * 0.04)}" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="${Math.round(brandS * 0.65)}" fill="rgba(57,211,83,0.35)">Achetez mieux · Vendez plus</text>
+    </g>
   </svg>`], { type: 'image/svg+xml' });
 }
 
@@ -102,11 +113,28 @@ export default function PosterGenerator({ annonce, onClose }) {
   function drawFlagStrip(ctx, w, y) {
     const bw = Math.round(w / 3);
     ctx.fillStyle = VERT_DARK;
-    ctx.fillRect(0, y, bw, 6);
+    ctx.fillRect(0, y, bw, 5);
     ctx.fillStyle = OR;
-    ctx.fillRect(bw, y, bw, 6);
+    ctx.fillRect(bw, y, bw, 5);
     ctx.fillStyle = VERT;
-    ctx.fillRect(bw * 2, y, bw, 6);
+    ctx.fillRect(bw * 2, y, bw, 5);
+  }
+
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : [text];
   }
 
   const draw = useCallback(async () => {
@@ -116,8 +144,11 @@ export default function PosterGenerator({ annonce, onClose }) {
     try {
       const ctx = canvas.getContext('2d');
       const { w, h } = size;
-      canvas.width = w;
-      canvas.height = h;
+      canvas.width = w * 2;
+      canvas.height = h * 2;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.scale(2, 2);
 
       let loadedOk = false;
       const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
@@ -129,18 +160,38 @@ export default function PosterGenerator({ annonce, onClose }) {
           img.onerror = resolve;
           img.src = imageUrl;
         });
-        if (loadedOk) {
+      }
+
+      ctx.fillStyle = NOIR;
+      ctx.fillRect(0, 0, w, h);
+
+      if (loadedOk) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+          img.src = imageUrl;
+        });
+        if (img.complete && img.naturalWidth) {
           const imgScale = Math.max(w / img.width, h / img.height);
           ctx.drawImage(img, (w - img.width * imgScale) / 2, (h - img.height * imgScale) / 2, img.width * imgScale, img.height * imgScale);
+          const grad = ctx.createLinearGradient(0, h * 0.45, 0, h);
+          grad.addColorStop(0, 'rgba(0,0,0,0.0)');
+          grad.addColorStop(0.4, 'rgba(0,0,0,0.55)');
+          grad.addColorStop(1, 'rgba(0,0,0,0.95)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
         }
       }
 
-      const grad = ctx.createLinearGradient(0, h * 0.35, 0, h);
-      grad.addColorStop(0, 'rgba(0,0,0,0.0)');
-      grad.addColorStop(0.5, 'rgba(0,0,0,0.65)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.93)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+      if (!loadedOk) {
+        const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6);
+        grad.addColorStop(0, '#1a1a1a');
+        grad.addColorStop(1, NOIR);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      }
 
       const title = annonce?.titre || 'Annonce';
       const price = annonce?.prix != null
@@ -148,126 +199,135 @@ export default function PosterGenerator({ annonce, onClose }) {
         : '';
       const ville = annonce?.ville || '';
       const type = annonce?.type || '';
+      const secteur = annonce?.secteur || '';
       const whatsapp = annonce?.whatsapp || '';
 
-      const titleS = Math.min(w * 0.065, 56);
-      const priceS = Math.min(w * 0.045, 40);
+      const titleS = Math.min(w * 0.075, 64);
+      const priceS = Math.min(w * 0.05, 42);
       const infoS = Math.min(w * 0.028, 24);
-      const brandS = Math.min(w * 0.021, 18);
+      const brandS = Math.min(w * 0.022, 20);
+      const smallS = Math.min(w * 0.021, 18);
 
-      const padX = w * 0.06;
+      const padX = w * 0.08;
       const textW = w - padX * 2;
 
-      // Top flag strip
       drawFlagStrip(ctx, w, 0);
 
-      // Logo + brand top-left
       const logo = new Image();
       logo.crossOrigin = 'anonymous';
       await new Promise(r => { logo.onload = r; logo.onerror = r; logo.src = '/logokb.png'; });
       const logoW = w * 0.08;
-      const logoX = w * 0.04;
-      const logoY = h * 0.025;
-      ctx.drawImage(logo, logoX, logoY, logoW, logoW);
+      ctx.drawImage(logo, w * 0.05, h * 0.025, logoW, logoW);
+
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 8;
       ctx.fillStyle = '#FFF';
-      ctx.font = `900 ${Math.min(w * 0.035, 30)}px sans-serif`;
+      ctx.font = `800 ${Math.min(w * 0.035, 32)}px Inter, "Helvetica Neue", Arial, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText('KONAB', logoX + logoW + w * 0.015, logoY + logoW * 0.38);
+      ctx.fillText('KONAB', w * 0.05 + logoW + w * 0.015, h * 0.025 + logoW * 0.38);
       ctx.fillStyle = VERT;
-      ctx.font = `600 ${Math.min(w * 0.02, 16)}px sans-serif`;
-      ctx.fillText('MARCKET', logoX + logoW + w * 0.015, logoY + logoW * 0.62);
+      ctx.font = `500 ${Math.min(w * 0.02, 16)}px Inter, "Helvetica Neue", Arial, sans-serif`;
+      ctx.fillText('MARCKET', w * 0.05 + logoW + w * 0.015, h * 0.025 + logoW * 0.62);
+      ctx.shadowBlur = 0;
 
-      // Type badge
       if (type) {
         const typeLabels = { offre: 'OFFRE', emploi: 'EMPLOI', formation: 'FORMATION', article: 'ARTICLE', recherche: 'RECHERCHE' };
         const lbl = typeLabels[type] || type.toUpperCase();
-        const badgeW = 140;
-        const badgeH = h * 0.04;
-        const badgeX = w / 2 - 70;
-        const badgeY = h * 0.13;
+        const badgeW = 180;
+        const badgeH = h * 0.035;
+        const badgeX = w / 2 - 90;
+        const badgeY = h * 0.11;
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 6;
         ctx.beginPath();
         ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeH / 2);
-        ctx.fillStyle = 'rgba(57,211,83,0.15)';
+        ctx.fillStyle = 'rgba(57,211,83,0.12)';
         ctx.fill();
         ctx.strokeStyle = VERT;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
+        ctx.shadowBlur = 0;
         ctx.fillStyle = VERT;
-        ctx.font = `700 ${infoS}px sans-serif`;
+        ctx.font = `600 ${infoS}px Inter, "Helvetica Neue", Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(lbl, w / 2, badgeY + badgeH / 2);
       }
 
-      // Title
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 16;
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = `800 ${titleS}px sans-serif`;
+      ctx.font = `800 ${titleS}px Inter, "Helvetica Neue", Arial, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 20;
-      const titleLines = wrapText(ctx, title.toUpperCase(), textW);
-      const titleBlockH = titleLines.length * (titleS + 6);
-      let titleY = h * 0.82 - titleBlockH / 2;
+      const titleLines = wrapText(ctx, title, textW);
+      const titleBlockH = titleLines.length * (titleS + 8);
+      let tY = h * 0.82 - titleBlockH / 2;
       for (const line of titleLines) {
-        ctx.fillText(line, w / 2, titleY);
-        titleY += titleS + 6;
+        ctx.fillText(line, w / 2, tY);
+        tY += titleS + 8;
       }
       ctx.shadowBlur = 0;
 
-      // Price
       if (price) {
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 12;
         ctx.fillStyle = OR;
-        ctx.font = `900 ${priceS}px sans-serif`;
+        ctx.font = `900 ${priceS}px Inter, "Helvetica Neue", Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur = 16;
-        ctx.fillText('💰 ' + price, w / 2, h * 0.74);
+        ctx.fillText(price, w / 2, h * 0.73);
         ctx.shadowBlur = 0;
       }
 
-      // Ville
-      if (ville) {
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.font = `400 ${infoS}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('📍 ' + ville, w / 2, h * 0.89);
-      }
+      const infoY = h * 0.89;
 
-      // WhatsApp
-      if (whatsapp) {
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.font = `400 ${infoS}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('📱 ' + whatsapp, w / 2, h * 0.925);
-      }
-
-      // Bottom flag strip
-      drawFlagStrip(ctx, w, h * 0.948);
-
-      // Divider
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(57,211,83,0.2)';
+      ctx.strokeStyle = 'rgba(57,211,83,0.15)';
       ctx.lineWidth = 1;
-      ctx.moveTo(w * 0.04, h * 0.958);
-      ctx.lineTo(w * 0.96, h * 0.958);
+      ctx.beginPath();
+      ctx.moveTo(w * 0.15, infoY);
+      ctx.lineTo(w * 0.85, infoY);
       ctx.stroke();
 
-      // Bottom brand
-      const bLogoW = w * 0.04;
-      ctx.drawImage(logo, w * 0.06, h * 0.964, bLogoW, bLogoW);
+      if (ville) {
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.font = `400 ${infoS}px Inter, "Helvetica Neue", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ville, w / 2, infoY + h * 0.03);
+      }
+
+      if (secteur) {
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.font = `400 ${smallS}px Inter, "Helvetica Neue", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(secteur, w / 2, infoY + h * 0.058);
+      }
+
+      if (whatsapp) {
+        ctx.fillStyle = 'rgba(57,211,83,0.7)';
+        ctx.font = `400 ${smallS}px Inter, "Helvetica Neue", Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(whatsapp, w / 2, infoY + h * 0.086);
+      }
+
+      ctx.fillStyle = 'rgba(8,8,8,0.85)';
+      ctx.fillRect(0, h - 40, w, 40);
+      drawFlagStrip(ctx, w, h - 40);
+
+      const bLogoW = w * 0.035;
+      ctx.drawImage(logo, w * 0.05, h - 34, bLogoW, bLogoW);
       ctx.fillStyle = 'rgba(57,211,83,0.8)';
-      ctx.font = `700 ${brandS}px sans-serif`;
+      ctx.font = `600 ${brandS}px Inter, "Helvetica Neue", Arial, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('Konab Marcket', w * 0.115, h * 0.966);
-      ctx.fillStyle = 'rgba(57,211,83,0.4)';
-      ctx.font = `400 ${Math.round(brandS * 0.7)}px sans-serif`;
-      ctx.fillText('Achetez mieux · Vendez plus', w * 0.115, h * 0.978 + brandS * 0.7);
+      ctx.fillText('Konab Marcket', w * 0.05 + bLogoW + w * 0.01, h - 32);
+      ctx.fillStyle = 'rgba(57,211,83,0.35)';
+      ctx.font = `400 ${Math.round(brandS * 0.65)}px Inter, "Helvetica Neue", Arial, sans-serif`;
+      ctx.fillText('Achetez mieux · Vendez plus', w * 0.05 + bLogoW + w * 0.01, h - 32 + brandS * 0.7);
 
       let blob = await new Promise(resolve => {
         try { canvas.toBlob(b => resolve(b), 'image/png'); }
@@ -317,7 +377,7 @@ export default function PosterGenerator({ annonce, onClose }) {
           files: [file],
         });
       } else {
-        const text = `Découvrez "${annonce?.titre}" sur Konab Marcket !\n${window.location.origin}/annonce/${annonce?.id}\n\nGénéré par Konab Marcket 🇧🇫`;
+        const text = `Découvrez "${annonce?.titre}" sur Konab Marcket !\n${window.location.origin}/annonce/${annonce?.id}\n\nGénéré par Konab Marcket`;
         const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
         window.open(waUrl, '_blank', 'width=600,height=600');
       }
@@ -336,14 +396,19 @@ export default function PosterGenerator({ annonce, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose?.()}
       style={{ zIndex: 700 }}
     >
-      <motion.div className="modal" style={{ maxWidth: 500 }}
+      <motion.div className="modal" style={{ maxWidth: 520 }}
         initial={{ opacity: 0, scale: 0.92, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
       >
         <div className="flag-strip" />
         <div className="modal-header">
           <div>
-            <h3><ImageIcon size={18} style={{ display: 'inline', marginRight: 8 }} /> Créer l'affiche</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, var(--vert), var(--vert-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ImageIcon size={16} color="white" />
+              </div>
+              Créer l'affiche
+            </h3>
             <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4, fontWeight: 400 }}>
               Téléchargez ou partagez sur les réseaux sociaux
             </p>
@@ -358,7 +423,8 @@ export default function PosterGenerator({ annonce, onClose }) {
               <motion.button key={s.label}
                 className={`btn btn-sm ${i === sizeIdx ? 'btn-primary' : 'btn-ghost'}`}
                 whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                onClick={() => setSizeIdx(i)}>
+                onClick={() => setSizeIdx(i)}
+                style={{ borderRadius: 100, fontSize: 12 }}>
                 {s.label}
               </motion.button>
             ))}
@@ -373,6 +439,7 @@ export default function PosterGenerator({ annonce, onClose }) {
             marginBottom: 16,
             minHeight: 200,
             position: 'relative',
+            border: '1px solid rgba(255,255,255,0.06)',
           }}>
             {!imgLoaded && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--text3)' }}>
@@ -415,27 +482,10 @@ export default function PosterGenerator({ annonce, onClose }) {
 
           <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(57,211,83,0.06)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(57,211,83,0.1)', fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <CheckCircle size={14} style={{ color: 'var(--vert)', flexShrink: 0 }} />
-            L'affiche inclura automatiquement le titre, le prix, la localisation, votre WhatsApp et notre marque.
+            L'affiche inclut le titre, prix, localisation, secteur et contact. Design professionnel prêt à partager.
           </div>
         </div>
       </motion.div>
     </motion.div>
   );
-}
-
-function wrapText(ctx, text, maxWidth) {
-  const words = text.split(' ');
-  const lines = [];
-  let current = '';
-  for (const word of words) {
-    const test = current ? current + ' ' + word : word;
-    if (ctx.measureText(test).width > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
-    }
-  }
-  if (current) lines.push(current);
-  return lines.length ? lines : [text];
 }

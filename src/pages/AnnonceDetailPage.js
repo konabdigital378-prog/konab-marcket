@@ -159,7 +159,7 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {annonce.affiche_url ? (
+            {annonce.images?.length > 0 || annonce.affiche_url ? (
               <div className="detail-image-container">
                 <img src={annonce.images?.[galIdx] || annonce.affiche_url} alt={annonce.titre} className="detail-image" />
                 {(annonce.images?.length || 0) > 1 && (

@@ -99,11 +99,11 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
       )}
 
       <div className="product-card-img">
-        {annonce.affiche_url
-          ? <img src={annonce.affiche_url} alt={annonce.titre} loading="lazy" />
+        {(annonce.affiche_url || annonce.images?.[0])
+          ? <img src={annonce.affiche_url || annonce.images?.[0]} alt={annonce.titre} loading="lazy" />
           : <ShoppingBag size={48} style={{ color: 'rgba(255,255,255,0.15)' }} />
         }
-        {annonce.affiche_url && <div className="product-card-img-overlay" />}
+        {(annonce.affiche_url || annonce.images?.[0]) && <div className="product-card-img-overlay" />}
         {(annonce.images?.length || 0) > 1 && (
           <div className="badge" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, fontSize: 10, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none' }}>
             +{annonce.images.length} photos
