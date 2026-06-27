@@ -144,7 +144,7 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
   return (
     <div>
       <section className="hero">
-        <div className="hero-bg" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/hero-bg.jpg)`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+        <div className="hero-bg" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/hero-bg.png)`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
           <div className="hero-bg-gradient" />
           <div className="hero-grid" />
           <div className="hero-globe" />
