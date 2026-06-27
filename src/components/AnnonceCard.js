@@ -34,8 +34,9 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
 
   useEffect(() => {
     if (!user || isOwner) return;
-    supabase.from('favoris').select('id').eq('user_id', user.id).eq('annonce_id', annonce.id).single()
-      .then(({ data }) => setFavori(!!data));
+    supabase.from('favoris').select('id').eq('user_id', user.id).eq('annonce_id', annonce.id).maybeSingle()
+      .then(({ data }) => setFavori(!!data))
+      .catch(() => {});
   }, [user, annonce.id, isOwner]);
 
   async function toggleFavori(e) {

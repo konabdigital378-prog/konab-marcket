@@ -48,8 +48,9 @@ export default function AnnonceDetailPage({ annonceId, onBack, onShowAuth, onSta
 
   useEffect(() => {
     if (!user || !annonceId) return;
-    supabase.from('favoris').select('id').eq('user_id', user.id).eq('annonce_id', annonceId).single()
-      .then(({ data }) => setFavori(!!data));
+    supabase.from('favoris').select('id').eq('user_id', user.id).eq('annonce_id', annonceId).maybeSingle()
+      .then(({ data }) => setFavori(!!data))
+      .catch(() => {});
   }, [user, annonceId]);
 
   async function toggleFavori() {

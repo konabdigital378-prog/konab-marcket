@@ -9,6 +9,16 @@ const SIZES = [
   { label: 'Bannière 16:9', w: 1200, h: 675 },
 ];
 
+const VERT = '#39D353';
+const VERT_DARK = '#0E7A32';
+const OR = '#F5B700';
+const NOIR = '#080808';
+
+function flagStrip(w, y = 0) {
+  const bw = Math.round(w / 3);
+  return `<rect x="0" y="${y}" width="${bw}" height="6" fill="${VERT_DARK}"/><rect x="${bw}" y="${y}" width="${bw}" height="6" fill="${OR}"/><rect x="${bw*2}" y="${y}" width="${bw}" height="6" fill="${VERT}"/>`;
+}
+
 function posterToSVG(annonce, w, h) {
   const title = annonce?.titre || 'Annonce';
   const price = annonce?.prix != null
@@ -22,36 +32,60 @@ function posterToSVG(annonce, w, h) {
   const imageUrl = annonce?.affiche_url || annonce?.images?.[0];
   const imageTag = imageUrl ? `<image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid cover"/>` : '';
 
-  const titleEsc = title.toUpperCase().replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const villeEsc = ville.replace(/&/g, '&amp;');
-  const waEsc = whatsapp.replace(/&/g, '&amp;');
+  const titleEsc = title.toUpperCase().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const villeEsc = ville.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const waEsc = whatsapp.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  const titleS = Math.round(Math.min(w * 0.065, 56));
+  const priceS = Math.round(Math.min(w * 0.045, 40));
+  const infoS = Math.round(Math.min(w * 0.028, 24));
+  const brandS = Math.round(Math.min(w * 0.021, 18));
+
+  return new Blob([`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
     <defs>
-      <linearGradient id="ov" x1="0" y1="0.4" x2="0" y2="1">
+      <linearGradient id="ov" x1="0" y1="0.35" x2="0" y2="1">
         <stop offset="0%" stop-color="rgba(0,0,0,0)"/>
-        <stop offset="60%" stop-color="rgba(0,0,0,0.8)"/>
-        <stop offset="100%" stop-color="rgba(0,0,0,0.95)"/>
+        <stop offset="50%" stop-color="rgba(0,0,0,0.65)"/>
+        <stop offset="100%" stop-color="rgba(0,0,0,0.93)"/>
       </linearGradient>
-      <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="rgba(0,0,0,0.5)"/>
-        <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+      <linearGradient id="glow" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0%" stop-color="rgba(57,211,83,0.15)"/>
+        <stop offset="100%" stop-color="rgba(57,211,83,0)"/>
       </linearGradient>
     </defs>
-    <rect width="${w}" height="${h}" fill="#0A0A0A"/>
+
+    <rect width="${w}" height="${h}" fill="${NOIR}"/>
     ${imageTag}
     <rect width="${w}" height="${h}" fill="url(#ov)"/>
-    <rect width="${w}" height="${h}" fill="url(#top)"/>
-    <text x="${w/2}" y="${h * 0.1}" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="${Math.min(w * 0.028, 24)}" fill="rgba(255,255,255,0.4)">${typeLabel}</text>
-    <text x="${w/2}" y="${h * 0.85}" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="${Math.min(w * 0.07, 60)}" fill="white" text-shadow="0 2px 10px rgba(0,0,0,0.5)">${titleEsc}</text>
-    ${price ? `<text x="${w/2}" y="${h * 0.78}" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="${Math.min(w * 0.05, 44)}" fill="white" text-shadow="0 2px 8px rgba(0,0,0,0.5)">${price}</text>` : ''}
-    ${ville ? `<text x="${w/2}" y="${h * 0.90}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${Math.min(w * 0.03, 26)}" fill="rgba(255,255,255,0.5)">${villeEsc}</text>` : ''}
-    ${waEsc ? `<text x="${w/2}" y="${h * 0.935}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${Math.min(w * 0.03, 26)}" fill="rgba(255,255,255,0.5)">${waEsc}</text>` : ''}
-    <line x1="${w * 0.25}" y1="${h * 0.945}" x2="${w * 0.75}" y2="${h * 0.945}" stroke="rgba(57,211,83,0.3)" stroke-width="1"/>
-    <text x="${w/2}" y="${h * 0.97}" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="${Math.min(w * 0.024, 20)}" fill="rgba(57,211,83,0.9)">Generé par Konab Marcket</text>
-    <text x="${w/2}" y="${h * 0.985}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${Math.min(w * 0.016, 14)}" fill="rgba(57,211,83,0.5)">Konab Marcket — Achetez mieux · Vendez plus</text>
-  </svg>`;
-  return new Blob([svg], { type: 'image/svg+xml' });
+
+    <rect x="0" y="0" width="${w}" height="6" fill="url(#glow)"/>
+    ${flagStrip(w)}
+
+    <g transform="translate(${w * 0.04}, ${h * 0.03})">
+      <image href="/logokb.png" width="${Math.round(w * 0.08)}" height="${Math.round(w * 0.08)}" preserveAspectRatio="xMidYMid meet"/>
+      <text x="${Math.round(w * 0.1)}" y="${Math.round(w * 0.045)}" font-family="sans-serif" font-weight="900" font-size="${Math.round(Math.min(w * 0.035, 30))}" fill="white">KONAB</text>
+      <text x="${Math.round(w * 0.1)}" y="${Math.round(w * 0.068)}" font-family="sans-serif" font-weight="600" font-size="${Math.round(Math.min(w * 0.02, 16))}" fill="${VERT}">MARCKET</text>
+    </g>
+
+    ${typeLabel ? `<rect x="${w/2 - 80}" y="${h * 0.13}" width="160" height="${Math.round(h * 0.04)}" rx="${Math.round(h * 0.02)}" fill="rgba(57,211,83,0.15)" stroke="${VERT}" stroke-width="1"/>
+      <text x="${w/2}" y="${h * 0.13 + Math.round(h * 0.026)}" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="${infoS}" fill="${VERT}">${typeLabel}</text>` : ''}
+
+    <text x="${w/2}" y="${h * 0.82}" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="${titleS}" fill="white">
+      <tspan x="${w/2}" dy="0">${titleEsc.split(' ').slice(0, 3).join(' ')}</tspan>
+      ${titleEsc.split(' ').length > 3 ? `<tspan x="${w/2}" dy="${titleS + 4}">${titleEsc.split(' ').slice(3, 6).join(' ')}</tspan>` : ''}
+    </text>
+
+    ${price ? `<text x="${w/2}" y="${h * 0.74}" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="${priceS}" fill="${OR}">💰 ${price}</text>` : ''}
+
+    ${villeEsc ? `<text x="${w/2}" y="${h * 0.89}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${infoS}" fill="rgba(255,255,255,0.6)">📍 ${villeEsc}</text>` : ''}
+    ${waEsc ? `<text x="${w/2}" y="${h * 0.925}" text-anchor="middle" font-family="sans-serif" font-weight="400" font-size="${infoS}" fill="rgba(255,255,255,0.6)">📱 ${waEsc}</text>` : ''}
+
+    <rect x="${w * 0.04}" y="${h * 0.948}" width="${w * 0.92}" height="1" fill="rgba(57,211,83,0.2)"/>
+    ${flagStrip(w, h * 0.948 + 6)}
+    <image href="/logokb.png" width="${Math.round(w * 0.04)}" height="${Math.round(w * 0.04)}" x="${w * 0.06}" y="${h * 0.958}"/>
+    <text x="${Math.round(w * 0.12)}" y="${h * 0.975}" font-family="sans-serif" font-weight="700" font-size="${brandS}" fill="rgba(57,211,83,0.8)">Konab Marcket</text>
+    <text x="${Math.round(w * 0.12)}" y="${h * 0.991}" font-family="sans-serif" font-weight="400" font-size="${Math.round(brandS * 0.7)}" fill="rgba(57,211,83,0.4)">Achetez mieux · Vendez plus</text>
+  </svg>`], { type: 'image/svg+xml' });
 }
 
 export default function PosterGenerator({ annonce, onClose }) {
@@ -64,6 +98,16 @@ export default function PosterGenerator({ annonce, onClose }) {
   const [errorMsg, setErrorMsg] = useState('');
 
   const size = SIZES[sizeIdx];
+
+  function drawFlagStrip(ctx, w, y) {
+    const bw = Math.round(w / 3);
+    ctx.fillStyle = VERT_DARK;
+    ctx.fillRect(0, y, bw, 6);
+    ctx.fillStyle = OR;
+    ctx.fillRect(bw, y, bw, 6);
+    ctx.fillStyle = VERT;
+    ctx.fillRect(bw * 2, y, bw, 6);
+  }
 
   const draw = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -91,20 +135,12 @@ export default function PosterGenerator({ annonce, onClose }) {
         }
       }
 
-      const grad = ctx.createLinearGradient(0, h * 0.4, 0, h);
+      const grad = ctx.createLinearGradient(0, h * 0.35, 0, h);
       grad.addColorStop(0, 'rgba(0,0,0,0.0)');
-      grad.addColorStop(0.5, 'rgba(0,0,0,0.7)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.95)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0.65)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.93)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
-
-      const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.2);
-      topGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
-      topGrad.addColorStop(1, 'rgba(0,0,0,0.0)');
-      ctx.fillStyle = topGrad;
-      ctx.fillRect(0, 0, w, h * 0.2);
-
-      ctx.textAlign = 'center';
 
       const title = annonce?.titre || 'Annonce';
       const price = annonce?.prix != null
@@ -114,82 +150,124 @@ export default function PosterGenerator({ annonce, onClose }) {
       const type = annonce?.type || '';
       const whatsapp = annonce?.whatsapp || '';
 
-      const titleSize = Math.min(w * 0.072, 64);
-      const priceSize = Math.min(w * 0.055, 48);
-      const infoSize = Math.min(w * 0.032, 28);
-      const brandSize = Math.min(w * 0.024, 22);
+      const titleS = Math.min(w * 0.065, 56);
+      const priceS = Math.min(w * 0.045, 40);
+      const infoS = Math.min(w * 0.028, 24);
+      const brandS = Math.min(w * 0.021, 18);
 
       const padX = w * 0.06;
       const textW = w - padX * 2;
 
-      ctx.textBaseline = 'bottom';
-      let y = h - padX - 20;
+      // Top flag strip
+      drawFlagStrip(ctx, w, 0);
 
-      ctx.fillStyle = 'rgba(57,211,83,0.9)';
-      ctx.font = `800 ${brandSize}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText('Généré par Konab Marcket', w / 2, y);
-      y -= brandSize + 6;
+      // Logo + brand top-left
+      const logo = new Image();
+      logo.crossOrigin = 'anonymous';
+      await new Promise(r => { logo.onload = r; logo.onerror = r; logo.src = '/logokb.png'; });
+      const logoW = w * 0.08;
+      const logoX = w * 0.04;
+      const logoY = h * 0.025;
+      ctx.drawImage(logo, logoX, logoY, logoW, logoW);
+      ctx.fillStyle = '#FFF';
+      ctx.font = `900 ${Math.min(w * 0.035, 30)}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('KONAB', logoX + logoW + w * 0.015, logoY + logoW * 0.38);
+      ctx.fillStyle = VERT;
+      ctx.font = `600 ${Math.min(w * 0.02, 16)}px sans-serif`;
+      ctx.fillText('MARCKET', logoX + logoW + w * 0.015, logoY + logoW * 0.62);
 
-      ctx.fillStyle = 'rgba(57,211,83,0.6)';
-      ctx.font = `${Math.min(brandSize * 0.65, 14)}px sans-serif`;
-      ctx.fillText('Konab Marcket — Achetez mieux · Vendez plus', w / 2, y);
-      y -= brandSize + 10;
-
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(57,211,83,0.3)';
-      ctx.lineWidth = 1;
-      ctx.moveTo(w / 2 - textW * 0.25, y);
-      ctx.lineTo(w / 2 + textW * 0.25, y);
-      ctx.stroke();
-      y -= 4;
-
-      if (whatsapp) {
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = `${infoSize}px sans-serif`;
-        ctx.fillText(whatsapp, w / 2, y);
-        y -= infoSize + 4;
-      }
-
-      if (ville) {
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = `${infoSize}px sans-serif`;
-        ctx.fillText(ville, w / 2, y);
-        y -= infoSize + 4;
-      }
-
-      if (price) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `900 ${priceSize}px sans-serif`;
+      // Type badge
+      if (type) {
+        const typeLabels = { offre: 'OFFRE', emploi: 'EMPLOI', formation: 'FORMATION', article: 'ARTICLE', recherche: 'RECHERCHE' };
+        const lbl = typeLabels[type] || type.toUpperCase();
+        const badgeW = 140;
+        const badgeH = h * 0.04;
+        const badgeX = w / 2 - 70;
+        const badgeY = h * 0.13;
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeH / 2);
+        ctx.fillStyle = 'rgba(57,211,83,0.15)';
+        ctx.fill();
+        ctx.strokeStyle = VERT;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = VERT;
+        ctx.font = `700 ${infoS}px sans-serif`;
         ctx.textAlign = 'center';
-        y -= priceSize * 0.3;
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur = 16;
-        ctx.fillText(price, w / 2, y);
-        ctx.shadowBlur = 0;
-        y -= priceSize + 8;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(lbl, w / 2, badgeY + badgeH / 2);
       }
 
-      ctx.textBaseline = 'bottom';
+      // Title
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = `800 ${titleSize}px sans-serif`;
+      ctx.font = `800 ${titleS}px sans-serif`;
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.shadowColor = 'rgba(0,0,0,0.6)';
       ctx.shadowBlur = 20;
-
-      const lines = wrapText(ctx, title.toUpperCase(), textW);
-      for (let i = lines.length - 1; i >= 0; i--) {
-        y -= titleSize + 4;
-        ctx.fillText(lines[i], w / 2, y);
+      const titleLines = wrapText(ctx, title.toUpperCase(), textW);
+      const titleBlockH = titleLines.length * (titleS + 6);
+      let titleY = h * 0.82 - titleBlockH / 2;
+      for (const line of titleLines) {
+        ctx.fillText(line, w / 2, titleY);
+        titleY += titleS + 6;
       }
       ctx.shadowBlur = 0;
 
-      if (type) {
-        const typeLabels = { offre: 'OFFRE', emploi: 'EMPLOI', formation: 'FORMATION', article: 'ARTICLE', recherche: 'RECHERCHE' };
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.font = `700 ${infoSize * 0.85}px sans-serif`;
-        ctx.fillText(typeLabels[type] || type.toUpperCase(), w / 2, padX + infoSize);
+      // Price
+      if (price) {
+        ctx.fillStyle = OR;
+        ctx.font = `900 ${priceS}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 16;
+        ctx.fillText('💰 ' + price, w / 2, h * 0.74);
+        ctx.shadowBlur = 0;
       }
+
+      // Ville
+      if (ville) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = `400 ${infoS}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('📍 ' + ville, w / 2, h * 0.89);
+      }
+
+      // WhatsApp
+      if (whatsapp) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = `400 ${infoS}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('📱 ' + whatsapp, w / 2, h * 0.925);
+      }
+
+      // Bottom flag strip
+      drawFlagStrip(ctx, w, h * 0.948);
+
+      // Divider
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(57,211,83,0.2)';
+      ctx.lineWidth = 1;
+      ctx.moveTo(w * 0.04, h * 0.958);
+      ctx.lineTo(w * 0.96, h * 0.958);
+      ctx.stroke();
+
+      // Bottom brand
+      const bLogoW = w * 0.04;
+      ctx.drawImage(logo, w * 0.06, h * 0.964, bLogoW, bLogoW);
+      ctx.fillStyle = 'rgba(57,211,83,0.8)';
+      ctx.font = `700 ${brandS}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('Konab Marcket', w * 0.115, h * 0.966);
+      ctx.fillStyle = 'rgba(57,211,83,0.4)';
+      ctx.font = `400 ${Math.round(brandS * 0.7)}px sans-serif`;
+      ctx.fillText('Achetez mieux · Vendez plus', w * 0.115, h * 0.978 + brandS * 0.7);
 
       let blob = await new Promise(resolve => {
         try { canvas.toBlob(b => resolve(b), 'image/png'); }

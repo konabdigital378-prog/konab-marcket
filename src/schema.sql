@@ -109,16 +109,34 @@ CREATE POLICY "Annonces supprimables par propriétaire" ON annonces
 -- PAIEMENTS
 DROP POLICY IF EXISTS "Paiements par propriétaire" ON paiements;
 DROP POLICY IF EXISTS "Paiements créables" ON paiements;
+DROP POLICY IF EXISTS "Paiements admin update" ON paiements;
+DROP POLICY IF EXISTS "Paiements admin select" ON paiements;
 
 CREATE POLICY "Paiements par propriétaire" ON paiements
   FOR SELECT USING (auth.uid() = user_id);
 
+CREATE POLICY "Paiements admin select" ON paiements
+  FOR SELECT USING (auth.email() = 'admin@gmail.com');
+
 CREATE POLICY "Paiements créables" ON paiements
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Paiements admin update" ON paiements
+  FOR UPDATE USING (auth.email() = 'admin@gmail.com');
+
+-- PROFILS: admin peut modifier abonnement
+DROP POLICY IF EXISTS "Profils modifiables par propriétaire" ON profiles;
+DROP POLICY IF EXISTS "Profils modifiables par admin" ON profiles;
+
+CREATE POLICY "Profils modifiables par propriétaire" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Profils modifiables par admin" ON profiles
+  FOR UPDATE USING (auth.email() = 'admin@gmail.com');
+
 -- STORAGE
 INSERT INTO storage.buckets (id, name, public) VALUES ('annonces', 'annonces', TRUE) ON CONFLICT DO NOTHING;
-INSERT INTO storage.buckets (id, name, public) VALUES ('captures', 'captures', FALSE) ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('captures', 'captures', TRUE) ON CONFLICT DO NOTHING;
 
 DROP POLICY IF EXISTS "Images annonces publiques" ON storage.objects;
 DROP POLICY IF EXISTS "Upload annonces par auth" ON storage.objects;
@@ -435,3 +453,30 @@ CREATE OR REPLACE FUNCTION increment_vues(annonce_id UUID)
 RETURNS VOID AS $$
   UPDATE annonces SET vues = vues + 1 WHERE id = annonce_id;
 $$ LANGUAGE sql SECURITY DEFINER;
+
+-- Trigger: notifier admin quand un nouveau paiement est créé
+CREATE OR REPLACE FUNCTION notifier_admin_paiement()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_admin_id UUID;
+  v_nom TEXT;
+BEGIN
+  SELECT id INTO v_admin_id FROM profiles WHERE email = 'admin@gmail.com' LIMIT 1;
+  SELECT nom INTO v_nom FROM profiles WHERE id = NEW.user_id;
+  IF v_admin_id IS NOT NULL THEN
+    PERFORM creer_notification(
+      v_admin_id,
+      'abonnement',
+      'Nouvelle demande d''abonnement',
+      COALESCE(v_nom, 'Un utilisateur') || ' a demandé ' || NEW.formule,
+      jsonb_build_object('paiement_id', NEW.id, 'user_id', NEW.user_id)
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_paiement_insert ON paiements;
+CREATE TRIGGER on_paiement_insert
+  AFTER INSERT ON paiements
+  FOR EACH ROW EXECUTE FUNCTION notifier_admin_paiement();

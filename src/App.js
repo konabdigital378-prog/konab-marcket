@@ -224,7 +224,7 @@ function AppInner() {
             onShowSignalement={showSignalement} />}
           {page === 'vendeur'   && <VendeurPage vendeurId={vendeurId}
             onBack={handleBackFromDetail} onShowDetail={showDetail} />}
-          {page === 'messagerie' && <MessageriePage onBack={() => nav('home')} initialChat={initialChat} onShowDetail={showDetail} />}
+          {page === 'messagerie' && <MessageriePage onBack={() => nav('home')} initialChat={initialChat} onShowDetail={showDetail} onShowVendeur={showVendeur} />}
           {page === 'livreur' && <LivreurPage onBack={() => nav('home')} onShowLivraisonDetail={showLivraisonDetail} />}
           {page === 'livraison_detail' && <LivraisonDetailPage livraisonId={livraisonDetailId} onBack={() => nav('livreur')} />}
           {page === 'categories' && <CategoriesPage onShowDetail={showDetail} />}

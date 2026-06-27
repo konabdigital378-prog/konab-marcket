@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, CreditCard, Copy, Phone, Image as ImageIcon, CheckCircle } from 'lucide-react';
-import { supabase, USSD_CODE, FORMULAS } from '../supabase';
+import { supabase, USSD_CODE, FORMULAS, SUPABASE_URL } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
 export default function PaiementModal({ formule, onClose, onSuccess }) {
@@ -41,11 +41,30 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
       const path = `${user.id}/${Date.now()}.${ext}`;
 
       setUploadProgress(30);
-      const { error: upErr } = await supabase.storage
-        .from('captures')
-        .upload(path, capture, { upsert: true, contentType: capture.type });
+      const { data: { session }, error: sesErr } = await supabase.auth.getSession();
+      if (sesErr || !session) throw new Error('Session expirée, reconnectez-vous');
+      if (session.expires_at && Date.now() / 1000 > session.expires_at) {
+        const { error: refreshErr } = await supabase.auth.refreshSession();
+        if (refreshErr) throw new Error('Session expirée, reconnectez-vous');
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (!s2) throw new Error('Session expirée, reconnectez-vous');
+        session.access_token = s2.access_token;
+      }
 
-      if (upErr) throw new Error('Erreur lors de l\'envoi de la capture : ' + upErr.message);
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/captures/${path}`;
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': capture.type,
+          'x-upsert': 'true',
+        },
+        body: capture,
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        throw new Error('Erreur lors de l\'envoi de la capture : ' + errText);
+      }
 
       setUploadProgress(60);
 
@@ -54,15 +73,29 @@ export default function PaiementModal({ formule, onClose, onSuccess }) {
 
       setUploadProgress(80);
 
-      const { error: dbErr } = await supabase.from('paiements').insert({
+      const { data: paiementData, error: dbErr } = await supabase.from('paiements').insert({
         user_id: user.id,
         formule,
         montant,
         capture_url,
         statut: 'en_attente',
-      });
+      }).select().single();
 
       if (dbErr) throw new Error('Erreur d\'enregistrement : ' + dbErr.message);
+
+      try {
+        const { data: adminProfiles } = await supabase.from('profiles')
+          .select('id').eq('email', 'admin@gmail.com').maybeSingle();
+        if (adminProfiles) {
+          await supabase.rpc('creer_notification', {
+            p_user_id: adminProfiles.id,
+            p_type: 'abonnement',
+            p_title: 'Nouvelle demande d\'abonnement',
+            p_body: `${profile?.nom || 'Un utilisateur'} a demandé l'abonnement ${info.name}`,
+            p_data: JSON.stringify({ paiement_id: paiementData?.id }),
+          });
+        }
+      } catch (_) {}
 
       setUploadProgress(100);
       setSent(true);

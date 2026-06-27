@@ -7,7 +7,9 @@ const NotifContext = createContext();
 
 function playNotifSound() {
   try {
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);

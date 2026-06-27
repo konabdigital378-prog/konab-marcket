@@ -27,6 +27,19 @@ export default function AdminPage() {
 
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin, fetchAll]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    const channel = supabase.channel('admin-paiements')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'paiements' },
+        () => { fetchAll(); }
+      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'paiements' },
+        () => { fetchAll(); }
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [isAdmin, fetchAll]);
+
   async function validerPaiement(p) {
     const expire = new Date();
     expire.setMonth(expire.getMonth() + 1);

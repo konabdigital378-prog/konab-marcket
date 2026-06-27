@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://airddmpofwbstsuhsjxl.supabase.co';
 const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpcmRkbXBvZndic3RzdWhzanhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MjM1MTUsImV4cCI6MjA5Nzk5OTUxNX0.BcRyoCZW_OxeGB9H2vgGXHohyOWKAi_w_h-Md5QkvfU';
 
+export const SUPABASE_URL = supabaseUrl;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL || 'admin@gmail.com';
