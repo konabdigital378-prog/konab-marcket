@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image as ImageIcon } from 'lucide-react';
+import { Package, Plus, Heart, Eye, MessageCircle, Edit2, Trash2, DollarSign } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
@@ -10,8 +10,17 @@ import AnnonceModal from '../components/AnnonceModal';
 import PaiementModal from '../components/PaiementModal';
 import PosterGenerator from '../components/PosterGenerator';
 
+const TABS = [
+  { key: 'annonces', label: '📦 Annonces' },
+  { key: 'favoris', label: '❤️ Favoris' },
+  { key: 'offres', label: '💬 Offres' },
+  { key: 'profil', label: '👤 Profil' },
+  { key: 'formule', label: '⭐ Formule' },
+  { key: 'livraisons', label: '🚚 Livraisons' },
+];
+
 export default function DashboardPage({ onShowCreate }) {
-  const { user, profile, refreshProfile, maxAnnonces } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [tab, setTab] = useState('annonces');
   const [annonces, setAnnonces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +33,6 @@ export default function DashboardPage({ onShowCreate }) {
   const [offres, setOffres] = useState([]);
   const [loadingOffres, setLoadingOffres] = useState(false);
   const [adresses, setAdresses] = useState([]);
-  const [loadingAddr, setLoadingAddr] = useState(false);
   const [showAddrForm, setShowAddrForm] = useState(false);
   const [addrForm, setAddrForm] = useState({ libelle: 'Domicile', ville: '', adresse: '', telephone: '', instructions: '', est_defaut: false });
   const [savingAddr, setSavingAddr] = useState(false);
@@ -46,7 +54,6 @@ export default function DashboardPage({ onShowCreate }) {
   }, [user]);
 
   useEffect(() => { fetchAnnonces(); }, [fetchAnnonces]);
-
   useEffect(() => { if (user) { loadFavoris(); loadOffres(); loadAdresses(); loadLivraisons(); countMessages(); } }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadFavoris() {
@@ -60,71 +67,72 @@ export default function DashboardPage({ onShowCreate }) {
 
   async function loadOffres() {
     setLoadingOffres(true);
-    const annonceIds = annonces.map(a => a.id);
-    if (annonceIds.length === 0) { setLoadingOffres(false); return; }
     const { data } = await supabase.from('offres')
-      .select('*, annonces(*), profiles(nom)')
-      .in('annonce_id', annonceIds)
-      .order('created_at', { ascending: false });
+      .select('*, annonces(titre, prix, affiche_url, ville, type, profiles(nom)), profiles:acheteur_id(nom)')
+      .eq('vendeur_id', user.id).order('created_at', { ascending: false });
     if (data) setOffres(data);
     setLoadingOffres(false);
   }
 
   async function loadAdresses() {
-    setLoadingAddr(true);
-    const { data } = await supabase.from('adresses')
-      .select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    const { data } = await supabase.from('adresses').select('*').eq('user_id', user.id).order('est_defaut', { ascending: false });
     if (data) setAdresses(data);
-    setLoadingAddr(false);
   }
 
   async function loadLivraisons() {
     setLoadingLiv(true);
-    const { data } = await supabase.from('livraisons')
-      .select('*, livreurs(*, profiles(nom, telephone))')
-      .eq('acheteur_id', user.id)
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.from('livraisons').select('*').eq('acheteur_id', user.id).order('created_at', { ascending: false });
     if (data) setLivraisonsUser(data);
     setLoadingLiv(false);
   }
 
   async function countMessages() {
-    const { count } = await supabase.from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('destinataire_id', user.id).eq('lu', false);
+    const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('destinataire_id', user.id).eq('lu', false);
     setMsgCount(count || 0);
   }
 
-  async function deleteAnnonce(id) {
-    if (!window.confirm('Supprimer définitivement cette annonce ?')) return;
+  const handleEdit = (a) => setEditAnnonce(a);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Supprimer cette annonce ?')) return;
     await supabase.from('annonces').delete().eq('id', id);
     fetchAnnonces();
-    toast('Annonce supprimée', 'success');
-  }
+  };
+
+  const activeAnnonces = annonces.filter(a => a.actif);
+  const totalVues = annonces.reduce((s, a) => s + (a.vues || 0), 0);
+
+  const widgets = [
+    { label: 'Annonces actives', value: activeAnnonces.length, icon: <Package size={22} />, color: 'var(--vert)', bg: 'var(--vert-bg)', change: '+2', up: true },
+    { label: 'Vues totales', value: totalVues, icon: <Eye size={22} />, color: 'var(--orange)', bg: 'var(--orange-bg)', change: '+12%', up: true },
+    { label: 'Messages', value: msgCount, icon: <MessageCircle size={22} />, color: '#6366F1', bg: 'rgba(99,102,241,0.1)', change: msgCount > 0 ? 'Nouveaux' : 'Aucun', up: msgCount > 0 },
+    { label: 'Revenus', value: `${annonces.filter(a => a.formule === 'premium').length} premiums`, icon: <DollarSign size={22} />, color: '#34C759', bg: 'var(--vert-bg)', change: '', up: true },
+  ];
 
   async function saveProfile(e) {
-    e.preventDefault(); setSaving(true);
-    const { error } = await supabase.from('profiles').update({ ...profileForm, updated_at: new Date().toISOString() }).eq('id', user.id);
-    await refreshProfile(); setSaving(false);
-    if (!error) toast('Profil mis à jour !', 'success'); else toast('Erreur lors de la mise à jour', 'error');
+    e.preventDefault();
+    setSaving(true);
+    const { error } = await supabase.from('profiles').update(profileForm).eq('id', user.id);
+    if (!error) { toast.success('Profil mis à jour'); refreshProfile(); }
+    else toast.error('Erreur: ' + error.message);
+    setSaving(false);
   }
 
-  async function removeFavori(favoriId) {
-    await supabase.from('favoris').delete().eq('id', favoriId);
-    setFavoris(prev => prev.filter(f => f.id !== favoriId));
-  }
-
-  async function handleOfferAction(offerId, statut) {
-    await supabase.from('offres').update({ statut }).eq('id', offerId);
-    loadOffres();
-    toast(statut === 'acceptee' ? 'Offre acceptée ✓' : 'Offre refusée', statut === 'acceptee' ? 'success' : 'error');
+  async function handleFormulaChoice(formule) {
+    if (formule === 'basic') {
+      const { error } = await supabase.from('profiles').update({ abonnement: 'basic' }).eq('id', user.id);
+      if (!error) { toast.success('Compte basic activé'); refreshProfile(); } else toast.error('Erreur');
+      return;
+    }
+    setShowPaiement(formule);
   }
 
   async function saveAddress(e) {
-    e.preventDefault(); setSavingAddr(true);
+    e.preventDefault();
+    setSavingAddr(true);
+    if (addrForm.est_defaut) await supabase.from('adresses').update({ est_defaut: false }).eq('user_id', user.id);
     const { error } = await supabase.from('adresses').insert({ ...addrForm, user_id: user.id });
-    if (!error) { toast('Adresse enregistrée ✓', 'success'); setShowAddrForm(false); setAddrForm({ libelle: 'Domicile', ville: '', adresse: '', telephone: '', instructions: '', est_defaut: false }); loadAdresses(); }
-    else toast('Erreur : ' + error.message, 'error');
+    if (!error) { setShowAddrForm(false); setAddrForm({ libelle: 'Domicile', ville: '', adresse: '', telephone: '', instructions: '', est_defaut: false }); loadAdresses(); toast.success('Adresse ajoutée'); }
+    else toast.error('Erreur');
     setSavingAddr(false);
   }
 
@@ -134,665 +142,323 @@ export default function DashboardPage({ onShowCreate }) {
     loadAdresses();
   }
 
-  const canCreate  = annonces.filter(a => a.actif).length < maxAnnonces();
-  const formuleKey = profile?.abonnement || 'basic';
-  const expDate    = profile?.abonnement_expire ? new Date(profile.abonnement_expire).toLocaleDateString('fr-FR') : null;
-  const initials   = (profile?.nom || user?.email || 'U').slice(0, 2).toUpperCase();
-  const totalVues  = annonces.reduce((sum, a) => sum + (a.vues || 0), 0);
-  const totalFav   = favoris.length;
-  const totalMsg   = msgCount;
+  const renderTab = () => {
+    switch (tab) {
+      case 'annonces':
+        return (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Mes annonces</h3>
+                <p style={{ fontSize: 13, color: 'var(--text3)' }}>{annonces.length} annonce{annonces.length > 1 ? 's' : ''} · {activeAnnonces.length} active{activeAnnonces.length > 1 ? 's' : ''}</p>
+              </div>
+              <motion.button className="btn btn-primary" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onShowCreate}>
+                <Plus size={16} /> Nouvelle annonce
+              </motion.button>
+            </div>
+            {loading ? (
+              <SkeletonCards count={3} />
+            ) : annonces.length === 0 ? (
+              <div className="text-center" style={{ padding: '60px 20px' }}>
+                <Package size={48} style={{ color: 'var(--text3)', marginBottom: 16 }} />
+                <h4 style={{ marginBottom: 8, color: 'var(--text)' }}>Aucune annonce pour le moment</h4>
+                <p style={{ color: 'var(--text3)', marginBottom: 20 }}>Publiez votre première annonce et commencez à vendre</p>
+                <button className="btn btn-primary" onClick={onShowCreate}><Plus size={16} /> Publier</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {annonces.map(a => (
+                  <div key={a.id} style={{ display: 'flex', gap: 16, alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16 }}>
+                    <div style={{ width: 72, height: 72, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'var(--bg2)' }}>
+                      {(a.affiche_url || a.images?.[0]) ? <img src={a.affiche_url || a.images?.[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text3)' }}><span style={{ fontSize: 24 }}>📷</span></div>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>{a.titre}</div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text3)' }}>
+                        <span>{a.ville}</span>
+                        <span>•</span>
+                        <span><Eye size={12} style={{ display: 'inline' }} /> {a.vues || 0}</span>
+                        <span>•</span>
+                        <span>{new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
+                        {!a.actif && <span className="badge badge-danger">Inactive</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <motion.button className="btn btn-ghost btn-sm" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setPosterAnnonce(a)}><span style={{ fontSize: 14 }}>🖼️</span> Affiche</motion.button>
+                      <motion.button className="btn btn-ghost btn-sm" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => handleEdit(a)}><Edit2 size={14} /></motion.button>
+                      <motion.button className="btn btn-ghost btn-sm" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} style={{ color: 'var(--danger)' }} onClick={() => handleDelete(a.id)}><Trash2 size={14} /></motion.button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
 
-  const tabs = [
-    { id: 'annonces', label: 'Mes annonces', icon: <Package size={16} /> },
-    { id: 'favoris', label: 'Favoris', icon: <Heart size={16} /> },
-    { id: 'stats', label: 'Statistiques', icon: <BarChart3 size={16} /> },
-    { id: 'offres', label: 'Offres', icon: <TrendingUp size={16} /> },
-    { id: 'commandes', label: 'Commandes', icon: <Truck size={16} /> },
-    { id: 'adresses', label: 'Adresses', icon: <MapPin size={16} /> },
-    { id: 'abonnement', label: 'Abonnement', icon: <Crown size={16} /> },
-    { id: 'profil', label: 'Mon profil', icon: <User size={16} /> },
-  ];
+      case 'favoris':
+        return (
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>❤️ Mes favoris</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>Annonces que vous avez aimées</p>
+            {loadingFav ? <SkeletonCards count={3} /> : favoris.length === 0 ? (
+              <div className="text-center" style={{ padding: '60px 20px' }}>
+                <Heart size={48} style={{ color: 'var(--text3)', marginBottom: 16 }} />
+                <h4 style={{ color: 'var(--text)', marginBottom: 8 }}>Aucun favori</h4>
+                <p style={{ color: 'var(--text3)' }}>Ajoutez des annonces à vos favoris en cliquant sur le cœur ❤️</p>
+              </div>
+            ) : (
+              <div className="products-grid">
+                {favoris.map(f => f.annonces && <AnnonceCard key={f.id} annonce={f.annonces} showFavoriBtn />)}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'offres':
+        return (
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>💬 Offres reçues</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>Négociations sur vos annonces</p>
+            {loadingOffres ? <SkeletonCards count={3} /> : offres.length === 0 ? (
+              <div className="text-center" style={{ padding: '60px 20px' }}>
+                <MessageCircle size={48} style={{ color: 'var(--text3)', marginBottom: 16 }} />
+                <h4 style={{ color: 'var(--text)', marginBottom: 8 }}>Aucune offre</h4>
+                <p style={{ color: 'var(--text3)' }}>Les offres apparaîtront ici quand des clients vous contacteront</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {offres.map(o => (
+                  <div key={o.id} style={{ display: 'flex', gap: 14, alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: 'var(--bg2)' }}>{o.annonces?.affiche_url ? <img src={o.annonces.affiche_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text3)', fontSize: 20 }}>📦</div>}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{o.annonces?.titre || 'Annonce'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Offre de {o.profiles?.nom || 'Inconnu'} · {o.montant ? `${parseInt(o.montant).toLocaleString()} FCFA` : 'Négociable'}</div>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(o.created_at).toLocaleDateString('fr-FR')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'profil':
+        return (
+          <div style={{ maxWidth: 600 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>👤 Mon profil</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>Informations personnelles et boutique</p>
+            <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="form-group">
+                  <label className="form-label">Nom complet</label>
+                  <input className="form-control" value={profileForm.nom} onChange={e => setProfileForm({ ...profileForm, nom: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Téléphone</label>
+                  <input className="form-control" value={profileForm.telephone} onChange={e => setProfileForm({ ...profileForm, telephone: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Nom de l'entreprise</label>
+                <input className="form-control" placeholder="Optionnel" value={profileForm.entreprise_nom} onChange={e => setProfileForm({ ...profileForm, entreprise_nom: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Bio</label>
+                <textarea className="form-control" rows={3} placeholder="Parlez de vous..." value={profileForm.bio} onChange={e => setProfileForm({ ...profileForm, bio: e.target.value })} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="form-group">
+                  <label className="form-label">Ville</label>
+                  <input className="form-control" value={profileForm.ville} onChange={e => setProfileForm({ ...profileForm, ville: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Secteur</label>
+                  <input className="form-control" value={profileForm.secteur} onChange={e => setProfileForm({ ...profileForm, secteur: e.target.value })} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 20 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={profileForm.notif_new_message} onChange={e => setProfileForm({ ...profileForm, notif_new_message: e.target.checked })} />
+                  Notifications messages
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={profileForm.notif_livraison} onChange={e => setProfileForm({ ...profileForm, notif_livraison: e.target.checked })} />
+                  Notifications livraisons
+                </label>
+              </div>
+              <motion.button type="submit" className="btn btn-primary" disabled={saving}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                style={{ alignSelf: 'flex-start' }}>
+                {saving ? 'Enregistrement...' : '💾 Enregistrer'}
+              </motion.button>
+            </form>
+
+            <div style={{ marginTop: 40 }}>
+              <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>📍 Carnet d'adresses</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {adresses.map(a => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{a.libelle} {a.est_defaut && <span className="badge badge-success">Défaut</span>}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text3)' }}>{a.adresse}, {a.ville} · {a.telephone}</div>
+                    </div>
+                    <button className="btn btn-ghost btn-sm" onClick={() => deleteAddress(a.id)}><Trash2 size={14} /></button>
+                  </div>
+                ))}
+              </div>
+              {showAddrForm ? (
+                <form onSubmit={saveAddress} style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <input className="form-control" placeholder="Libellé (Domicile, Bureau...)" value={addrForm.libelle} onChange={e => setAddrForm({ ...addrForm, libelle: e.target.value })} />
+                    <input className="form-control" placeholder="Ville" value={addrForm.ville} onChange={e => setAddrForm({ ...addrForm, ville: e.target.value })} required />
+                  </div>
+                  <input className="form-control" placeholder="Adresse" value={addrForm.adresse} onChange={e => setAddrForm({ ...addrForm, adresse: e.target.value })} required />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <input className="form-control" placeholder="Téléphone" value={addrForm.telephone} onChange={e => setAddrForm({ ...addrForm, telephone: e.target.value })} />
+                    <input className="form-control" placeholder="Instructions (optionnel)" value={addrForm.instructions} onChange={e => setAddrForm({ ...addrForm, instructions: e.target.value })} />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={addrForm.est_defaut} onChange={e => setAddrForm({ ...addrForm, est_defaut: e.target.checked })} />
+                    Adresse par défaut
+                  </label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <motion.button type="submit" className="btn btn-primary btn-sm" disabled={savingAddr} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>{savingAddr ? '...' : 'Ajouter'}</motion.button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowAddrForm(false)}>Annuler</button>
+                  </div>
+                </form>
+              ) : (
+                <motion.button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setShowAddrForm(true)}>
+                  <Plus size={14} /> Ajouter une adresse
+                </motion.button>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'formule':
+        return (
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>⭐ Formule d'abonnement</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 24 }}>Choisissez la formule qui correspond à vos besoins</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20 }}>
+              {FORMULAS.map(f => {
+                const isActive = profile?.abonnement === f.id;
+                return (
+                  <motion.div key={f.id} whileHover={{ y: -4 }} style={{
+                    background: 'var(--surface)', border: `2px solid ${isActive ? 'var(--vert)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius)', padding: 28, position: 'relative',
+                    boxShadow: isActive ? '0 4px 20px rgba(52,199,89,0.15)' : 'none',
+                  }}>
+                    {isActive && <div className="badge badge-success" style={{ position: 'absolute', top: 12, right: 12 }}>Actif</div>}
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>{f.icon}</div>
+                    <h4 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>{f.name}</h4>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>{f.desc}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--vert)', marginBottom: 16 }}>
+                      {f.prix === 0 ? 'Gratuit' : `${f.prix.toLocaleString()} FCFA`}
+                      {f.prix > 0 && <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 400 }}>/{f.duree}</span>}
+                    </div>
+                    <ul style={{ listStyle: 'none', padding: 0, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {f.features.map((feat, i) => (
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)' }}>
+                          <span className="feat-check">✓</span> {feat}
+                        </li>
+                      ))}
+                    </ul>
+                    <motion.button className={`btn ${isActive ? 'btn-secondary' : 'btn-primary'} btn-sm`}
+                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      disabled={isActive}
+                      onClick={() => handleFormulaChoice(f.id)}>
+                      {isActive ? 'Formule actuelle' : f.prix === 0 ? 'Activer gratuit' : 'Choisir'}
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case 'livraisons':
+        return (
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>🚚 Mes livraisons</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>Suivi de vos commandes en cours</p>
+            {loadingLiv ? <SkeletonCards count={3} /> : livraisonsUser.length === 0 ? (
+              <div className="text-center" style={{ padding: '60px 20px' }}>
+                <span style={{ fontSize: 48 }}>🚚</span>
+                <h4 style={{ color: 'var(--text)', marginBottom: 8 }}>Aucune livraison</h4>
+                <p style={{ color: 'var(--text3)' }}>Vos commandes avec livraison apparaîtront ici</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {livraisonsUser.map(l => (
+                  <div key={l.id} style={{ display: 'flex', gap: 14, alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 10, background: 'var(--vert-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🚚</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Livraison #{l.id.slice(0, 8)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{l.ville_depart} → {l.ville_arrivee} · {l.statut}</div>
+                    </div>
+                    <span className="badge badge-success">{l.statut}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="page">
-      <motion.div className="profile-banner"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <div className="profile-avatar">{initials}</div>
-        <div className="profile-info">
-          <div className="profile-name">{profile?.nom || user?.email}</div>
-          <div className="profile-email">{user?.email}</div>
-          {profile?.entreprise_nom && <div style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 8 }}>{profile.entreprise_nom}</div>}
-          <div className="profile-badges">
-            <span className={`badge ${formuleKey === 'basic' ? 'badge-gray' : formuleKey === 'premium' ? 'badge-warning' : 'badge-gold'}`}>
-              {formuleKey === 'basic' ? 'Basique' : formuleKey === 'premium' ? 'Premium' : 'Certifié Entreprise'}
-            </span>
-            {expDate && <span className="badge badge-success">✅ Actif jusqu'au {expDate}</span>}
-            {profile?.certifie && <span className="badge badge-gold">⭐ Certifié</span>}
-          </div>
+      <div className="container">
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontFamily: 'var(--font-alt)', fontSize: 26, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
+            👋 Bon retour, {profile?.nom || user?.email}
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--text3)' }}>
+            Gérez vos annonces et votre boutique en un clin d'œil
+          </p>
         </div>
-      </motion.div>
 
-      <motion.div className="stats-grid"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        <div className="stat-card">
-          <BarChart3 size={20} style={{ color: 'var(--vert)', margin: '0 auto 8px' }} />
-          <div className="stat-num vert">{annonces.length}</div>
-          <div className="stat-label">Publiées</div>
+        <div className="dashboard-grid">
+          {widgets.map((w, i) => (
+            <motion.div key={i} className="dashboard-widget" whileHover={{ y: -2 }}>
+              <div className="dashboard-widget-header">
+                <div className="dashboard-widget-icon" style={{ background: w.bg, color: w.color }}>{w.icon}</div>
+                {w.change && <span className={`dashboard-widget-change ${w.up ? 'up' : 'down'}`}>{w.change}</span>}
+              </div>
+              <div className="dashboard-widget-label">{w.label}</div>
+              <div className="dashboard-widget-value">{w.value}</div>
+            </motion.div>
+          ))}
         </div>
-        <div className="stat-card">
-          <Package size={20} style={{ color: 'var(--or)', margin: '0 auto 8px' }} />
-          <div className="stat-num or">{annonces.filter(a=>a.actif).length}</div>
-          <div className="stat-label">Actives</div>
-        </div>
-        <div className="stat-card">
-          <Eye size={20} style={{ color: 'white', margin: '0 auto 8px' }} />
-          <div className="stat-num blanc">{totalVues}</div>
-          <div className="stat-label">Vues totales</div>
-        </div>
-        <div className="stat-card">
-          <Heart size={20} style={{ color: 'var(--danger)', margin: '0 auto 8px' }} />
-          <div className="stat-num or">{totalFav}</div>
-          <div className="stat-label">Favoris reçus</div>
-        </div>
-      </motion.div>
 
-      <div className="tabs" style={{ flexWrap: 'wrap' }}>
-        {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${tab===t.id?'active':''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
+        <div className="tabs" style={{ marginBottom: 28 }}>
+          {TABS.map(t => (
+            <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+            {renderTab()}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -12 }}
-          transition={{ duration: 0.25 }}
-        >
-          {tab === 'annonces' && (
-            <div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                <div className="section-title" style={{ marginBottom: 0 }}>
-                  <div className="section-title-bar" />
-                  <Package size={20} /> Mes annonces ({annonces.filter(a=>a.actif).length}/{maxAnnonces()})
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <motion.button className="btn btn-primary"
-                    onClick={() => onShowCreate && onShowCreate()}
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    disabled={!canCreate}
-                  >
-                    <Plus size={16} /> Publier
-                  </motion.button>
-                </div>
-              </div>
-              {!canCreate && annonces.filter(a=>a.actif).length > 0 && (
-                <div className="alert alert-warning" style={{ marginBottom: 16 }}>
-                  ⚠️ Limite de {maxAnnonces()} annonces atteinte.
-                  <button onClick={() => setTab('abonnement')} style={{ background:'none', border:'none', color:'var(--vert)', fontWeight:800, cursor:'pointer', marginLeft:8 }}>
-                    Passer en premium →
-                  </button>
-                </div>
-              )}
-              {loading ? <SkeletonCards count={3} />
-              : annonces.length === 0 ? (
-                <div className="empty-state">
-                  <div className="icon"><Package size={60} style={{ color: 'var(--text3)' }} /></div>
-                  <h3>Aucune annonce publiée</h3>
-                  <p>Publiez votre première annonce et commencez à recevoir des contacts !</p>
-                  <motion.button className="btn btn-primary btn-lg"
-                    onClick={() => onShowCreate && onShowCreate()}
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                    <Plus size={18} /> Créer ma première annonce
-                  </motion.button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {annonces.map(a => {
-                    const imgCount = (a.images?.length || 0) + (a.affiche_url ? 1 : 0);
-                    return (
-                      <motion.div key={a.id} className="dash-annonce-card"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        layout
-                      >
-                        <img className="dash-annonce-thumb"
-                          src={a.affiche_url || (a.images?.[0]) || ''}
-                          alt={a.titre}
-                          onError={e => { e.target.style.display = 'none'; }}
-                        />
-                        <div className="dash-annonce-body">
-                          <div className="dash-annonce-title">{a.titre}</div>
-                          {a.description && (
-                            <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.4, marginBottom: 6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                              {a.description}
-                            </div>
-                          )}
-                          <div className="dash-annonce-meta">
-                            <span>{a.ville || 'Non précisée'}</span>
-                            <span>{a.secteur}</span>
-                            {a.prix != null && <span style={{ color: 'var(--vert)', fontWeight: 700 }}>{a.prix === 0 ? 'Gratuit' : new Intl.NumberFormat('fr-FR').format(a.prix) + ' FCFA'}</span>}
-                            {!a.actif && <span className="badge badge-gray">Inactive</span>}
-                            {a.actif && <span className="badge badge-success">Active</span>}
-                            {imgCount > 1 && <span><ImageIcon size={12} style={{ display: 'inline' }} /> {imgCount} photos</span>}
-                          </div>
-                          <div className="dash-annonce-stats">
-                            <span><Eye size={12} style={{ display: 'inline' }} /> {a.vues || 0} vues</span>
-                            <span><MessageCircle size={12} style={{ display: 'inline' }} /> 0</span>
-                            <span><Clock size={12} style={{ display: 'inline' }} /> {new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
-                          </div>
-                        </div>
-                        <div className="dash-annonce-actions" style={{ display: 'flex', gap: 4, flexDirection: 'column', alignItems: 'stretch' }}>
-                          <motion.button className="btn btn-sm"
-                            style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', whiteSpace: 'nowrap', fontSize: 11 }}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            onClick={(e) => { e.stopPropagation(); setEditAnnonce(a); }}>
-                            <Edit2 size={12} style={{ marginRight: 4, display: 'inline' }} /> Modifier
-                          </motion.button>
-                          <motion.button className="btn btn-sm"
-                            style={{ background: 'rgba(245,183,0,0.1)', color: 'var(--or)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', fontSize: 11 }}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            onClick={(e) => { e.stopPropagation(); setPosterAnnonce(a); }}>
-                            <ImageIcon size={12} style={{ marginRight: 4, display: 'inline' }} /> Affiche
-                          </motion.button>
-                          <motion.button className="btn btn-sm"
-                            style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', fontSize: 11 }}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            onClick={(e) => { e.stopPropagation(); deleteAnnonce(a.id); }}>
-                            <Trash2 size={12} style={{ marginRight: 4, display: 'inline' }} /> Suppr.
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === 'favoris' && (
-            <div>
-              <div className="section-title" style={{ marginBottom: 20 }}>
-                <div className="section-title-bar" />
-                <Heart size={20} /> Mes favoris ({favoris.length})
-              </div>
-              {loadingFav ? <SkeletonCards count={3} />
-              : favoris.length === 0 ? (
-                <div className="empty-state">
-                  <div className="icon"><Heart size={60} style={{ color: 'var(--text3)' }} /></div>
-                  <h3>Aucun favori</h3>
-                  <p>Ajoutez des annonces en favoris en cliquant sur le cœur.</p>
-                </div>
-              ) : (
-                <div className="cards-grid">
-                  {favoris.map(f => (
-                    <div key={f.id} style={{ position: 'relative' }}>
-                      <AnnonceCard annonce={f.annonces} showFavoriBtn />
-                      <motion.button className="btn btn-sm"
-                        style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,71,87,0.2)', color: 'var(--danger)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', zIndex: 2, border: 'none', cursor: 'pointer' }}
-                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                        onClick={() => removeFavori(f.id)}>
-                        <X size={14} /> Retirer
-                      </motion.button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === 'stats' && (
-            <div>
-              <div className="section-title" style={{ marginBottom: 20 }}>
-                <div className="section-title-bar" />
-                <BarChart3 size={20} /> Statistiques avancées
-              </div>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
-                    <Eye size={20} style={{ color: 'var(--vert)' }} />
-                  </div>
-                  <div className="stat-num vert">{totalVues}</div>
-                  <div className="stat-label">Vues totales</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(245,183,0,0.1)' }}>
-                    <Heart size={20} style={{ color: 'var(--or)' }} />
-                  </div>
-                  <div className="stat-num or">{totalFav}</div>
-                  <div className="stat-label">Favoris reçus</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
-                    <MessageCircle size={20} style={{ color: 'var(--vert)' }} />
-                  </div>
-                  <div className="stat-num vert">{totalMsg}</div>
-                  <div className="stat-label">Messages non lus</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(248,156,28,0.1)' }}>
-                    <Package size={20} style={{ color: 'var(--orange)' }} />
-                  </div>
-                  <div className="stat-num or">{annonces.filter(a => a.actif).length}</div>
-                  <div className="stat-label">Annonces actives</div>
-                </div>
-              </div>
-              <div className="card-surface">
-                <div className="card-surface-title"><TrendingUp size={18} /> Performance par annonce</div>
-                {annonces.length === 0 ? (
-                  <p style={{ color: 'var(--text3)', fontSize: 14 }}>Aucune donnée disponible.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {annonces.slice(0, 10).map(a => (
-                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'white' }}>{a.titre}</div>
-                        <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text3)' }}>
-                          <span><Eye size={13} style={{ display: 'inline' }} /> {a.vues || 0}</span>
-                          <span className={`badge ${a.actif ? 'badge-success' : 'badge-danger'}`}>{a.actif ? 'Actif' : 'Inactif'}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {tab === 'offres' && (
-            <div>
-              <div className="section-title" style={{ marginBottom: 20 }}>
-                <div className="section-title-bar" />
-                <TrendingUp size={20} /> Offres reçues ({offres.length})
-              </div>
-              {loadingOffres ? <div className="loader"><div className="spinner" /></div>
-              : offres.length === 0 ? (
-                <div className="empty-state">
-                  <div className="icon"><TrendingUp size={60} style={{ color: 'var(--text3)' }} /></div>
-                  <h3>Aucune offre reçue</h3>
-                  <p>Les offres de vos acheteurs apparaîtront ici.</p>
-                </div>
-              ) : (
-                <div className="offers-list">
-                  {offres.map(o => (
-                    <div key={o.id} className="offre-card">
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, color: 'white', fontSize: 14, marginBottom: 4 }}>
-                          {o.profiles?.nom} — <span className="offre-montant">{o.montant.toLocaleString('fr-FR')} FCFA</span>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 4 }}>
-                          sur "{o.annonces?.titre || 'Annonce'}"
-                        </div>
-                        {o.message && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>"{o.message}"</div>}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span className={`badge ${o.statut === 'en_attente' ? 'badge-warning' : o.statut === 'acceptee' ? 'badge-success' : 'badge-danger'}`}>
-                          {o.statut === 'en_attente' ? 'En attente' : o.statut === 'acceptee' ? 'Acceptée' : 'Refusée'}
-                        </span>
-                        {o.statut === 'en_attente' && (
-                          <>
-                            <motion.button className="btn btn-sm" style={{ background: 'rgba(57,211,83,0.1)', color: 'var(--vert)', borderRadius: 'var(--radius-sm)' }}
-                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                              onClick={() => handleOfferAction(o.id, 'acceptee')}>
-                              ✓ Accepter
-                            </motion.button>
-                            <motion.button className="btn btn-sm" style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)' }}
-                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                              onClick={() => handleOfferAction(o.id, 'refusee')}>
-                              ✕ Refuser
-                            </motion.button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === 'commandes' && (
-            <div>
-              <div className="section-title" style={{ marginBottom: 20 }}>
-                <div className="section-title-bar" />
-                <Truck size={20} /> Historique des commandes ({livraisonsUser.length})
-              </div>
-              {loadingLiv ? <div className="loader"><div className="spinner" /></div>
-              : livraisonsUser.length === 0 ? (
-                <div className="empty-state">
-                  <div className="icon"><Truck size={60} style={{ color: 'var(--text3)' }} /></div>
-                  <h3>Aucune commande</h3>
-                  <p>Vos commandes de livraison apparaîtront ici.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {livraisonsUser.map(l => (
-                    <div key={l.id} className="offre-card">
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <span className={`badge ${l.statut === 'livree' ? 'badge-success' : l.statut === 'annulee' ? 'badge-danger' : l.statut === 'en_attente' ? 'badge-warning' : 'badge-info'}`}>
-                            {l.statut === 'en_attente' ? 'En attente' : l.statut === 'acceptee' ? 'Acceptée' : l.statut === 'en_cours' ? 'En cours' : l.statut === 'livree' ? 'Livrée' : 'Annulée'}
-                          </span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>
-                            {l.prix_estime.toLocaleString('fr-FR')} FCFA
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-                          {l.ville_ramassage} → {l.ville_livraison}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                          {new Date(l.created_at).toLocaleDateString('fr-FR')}
-                        </div>
-                      </div>
-                      {l.statut === 'livree' && l.note_livreur && (
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ color: 'var(--or)', fontSize: 14 }}>{'★'.repeat(l.note_livreur)}{'☆'.repeat(5-l.note_livreur)}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>Noté</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === 'adresses' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <div className="section-title" style={{ marginBottom: 0 }}>
-                  <div className="section-title-bar" />
-                  <MapPin size={20} /> Carnet d'adresses
-                </div>
-                <motion.button className="btn btn-primary btn-sm"
-                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowAddrForm(true)}>
-                  <Plus size={16} /> Ajouter
-                </motion.button>
-              </div>
-
-              {showAddrForm && (
-                <div className="card-surface" style={{ marginBottom: 20 }}>
-                  <form onSubmit={saveAddress}>
-                    <div className="two-col">
-                      <div className="form-group">
-                        <label className="form-label">Libellé</label>
-                        <select className="form-control" value={addrForm.libelle}
-                          onChange={e => setAddrForm(f => ({...f, libelle: e.target.value}))}>
-                          <option>Domicile</option>
-                          <option>Travail</option>
-                          <option>Autre</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Ville</label>
-                        <input className="form-control" value={addrForm.ville}
-                          onChange={e => setAddrForm(f => ({...f, ville: e.target.value}))} required placeholder="Ouagadougou" />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Adresse complète</label>
-                      <input className="form-control" value={addrForm.adresse}
-                        onChange={e => setAddrForm(f => ({...f, adresse: e.target.value}))} required placeholder="Secteur 12, Rue 34, Porte 5" />
-                    </div>
-                    <div className="two-col">
-                      <div className="form-group">
-                        <label className="form-label">Téléphone</label>
-                        <input className="form-control" value={addrForm.telephone}
-                          onChange={e => setAddrForm(f => ({...f, telephone: e.target.value}))} required placeholder="+226 XX XX XX XX" />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Instructions (optionnel)</label>
-                        <input className="form-control" value={addrForm.instructions}
-                          onChange={e => setAddrForm(f => ({...f, instructions: e.target.value}))} placeholder="Près du marché, sonnette verte" />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <motion.button type="button" className="btn btn-ghost" style={{ borderRadius: 'var(--radius-sm)' }}
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                        onClick={() => setShowAddrForm(false)}>
-                        Annuler
-                      </motion.button>
-                      <motion.button type="submit" className="btn btn-primary"
-                        disabled={savingAddr} style={{ borderRadius: 'var(--radius-sm)' }}
-                        whileHover={{ scale: savingAddr ? 1 : 1.03 }}
-                        whileTap={{ scale: savingAddr ? 1 : 0.97 }}>
-                        {savingAddr ? <><span className="btn-spinner" /> Sauvegarde...</> : '✅ Enregistrer'}
-                      </motion.button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {loadingAddr ? <div className="loader"><div className="spinner" /></div>
-              : adresses.length === 0 ? (
-                <div className="empty-state">
-                  <div className="icon"><MapPin size={60} style={{ color: 'var(--text3)' }} /></div>
-                  <h3>Aucune adresse enregistrée</h3>
-                  <p>Ajoutez vos adresses pour faciliter les livraisons.</p>
-                </div>
-              ) : (
-                <div className="addresses-grid">
-                  {adresses.map(a => (
-                    <div key={a.id} className="adresse-card">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <span className={`badge ${a.libelle === 'Domicile' ? 'badge-success' : a.libelle === 'Travail' ? 'badge-info' : 'badge-warning'}`}>
-                          {a.libelle}
-                        </span>
-                        {a.est_defaut && <span className="badge badge-gold">⭐ Par défaut</span>}
-                      </div>
-                      <div style={{ fontWeight: 700, color: 'white', marginBottom: 4 }}>{a.adresse}</div>
-                      <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>
-                        <MapPin size={12} style={{ display: 'inline' }} /> {a.ville}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 8 }}>
-                        <Phone size={12} style={{ display: 'inline' }} /> {a.telephone}
-                      </div>
-                      {a.instructions && <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', marginBottom: 8 }}>📌 {a.instructions}</div>}
-                      <motion.button className="btn btn-sm" style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '6px 12px', fontSize: 12 }}
-                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                        onClick={() => deleteAddress(a.id)}>
-                        <X size={12} /> Supprimer
-                      </motion.button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === 'abonnement' && (
-            <div>
-              <div className="section-title" style={{ marginBottom: 24 }}>
-                <div className="section-title-bar" /> <Crown size={22} /> Choisissez votre formule
-              </div>
-              {formuleKey !== 'basic' && (
-                <div className="alert alert-info">
-                  ✅ Abonnement actuel : <strong>{FORMULAS[formuleKey]?.name}</strong>{expDate && ` — valide jusqu'au ${expDate}`}
-                </div>
-              )}
-              <div className="formules-grid">
-                <motion.div className="formule-card" whileHover={{ y: -4 }}>
-                  <div className="formule-icon">🌱</div>
-                  <div className="formule-name">Basique</div>
-                  <div className="formule-price" style={{ background: 'none', WebkitTextFillColor: 'var(--text2)', color: 'var(--text2)' }}>Gratuit</div>
-                  <ul className="formule-features">
-                    <li><span className="feat-check">✓</span> 10 annonces max</li>
-                    <li><span className="feat-check">✓</span> Tous les types</li>
-                    <li><span className="feat-check">✓</span> Contact WhatsApp</li>
-                    <li><span className="feat-check">✓</span> Profil public</li>
-                  </ul>
-                  {formuleKey === 'basic' && <span className="badge badge-gray" style={{ justifyContent:'center', padding:'8px' }}>Actuel</span>}
-                </motion.div>
-                <motion.div className={`formule-card ${formuleKey==='basic'?'featured':''}`} whileHover={{ y: -4 }}>
-                  <div className="formule-icon">⚡</div>
-                  <div className="formule-name">Premium</div>
-                  <div className="formule-price"><sup>FCFA</sup> 2 000 <span>/ mois</span></div>
-                  <ul className="formule-features">
-                    <li><span className="feat-check">✓</span> 50 annonces</li>
-                    <li><span className="feat-check">✓</span> Badge Premium</li>
-                    <li><span className="feat-check">✓</span> Mise en avant</li>
-                    <li><span className="feat-check">✓</span> Statistiques</li>
-                    <li><span className="feat-check">✓</span> Support prioritaire</li>
-                  </ul>
-                  <motion.button className="btn btn-primary btn-full" style={{ borderRadius:'var(--radius-sm)' }}
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowPaiement('premium')}>
-                    {formuleKey === 'premium' ? '🔄 Renouveler' : '⬆️ Activer Premium'}
-                  </motion.button>
-                </motion.div>
-                <motion.div className={`formule-card ${formuleKey==='premium'?'featured':''}`} whileHover={{ y: -4 }}>
-                  <div className="formule-icon">⭐</div>
-                  <div className="formule-name">Certifié</div>
-                  <div className="formule-price"><sup>FCFA</sup> 5 000 <span>/ mois</span></div>
-                  <ul className="formule-features">
-                    <li><span className="feat-check">✓</span> 200 annonces</li>
-                    <li><span className="feat-check">✓</span> Badge Certifié</li>
-                    <li><span className="feat-check">✓</span> Page entreprise</li>
-                    <li><span className="feat-check">✓</span> Priorité résultats</li>
-                    <li><span className="feat-check">✓</span> Stats avancées</li>
-                    <li><span className="feat-check">✓</span> Tout Premium +</li>
-                  </ul>
-                  <motion.button className="btn btn-gold btn-full" style={{ borderRadius:'var(--radius-sm)' }}
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowPaiement('certified')}>
-                    {formuleKey === 'certified' ? '🔄 Renouveler' : '🏆 Certifier'}
-                  </motion.button>
-                </motion.div>
-              </div>
-              <div className="card-surface" style={{ marginTop: 28 }}>
-                <div className="card-surface-title"><CreditCard size={18} /> Comment payer ?</div>
-                <div className="payment-steps">
-                  {[
-                    { n:1, t:'Choisissez votre formule', d:'Cliquez sur le bouton "Activer"' },
-                    { n:2, t:'Payez via Orange Money', d:'Utilisez le code USSD fourni' },
-                    { n:3, t:'Envoyez la capture', d:'Photographiez le reçu et joignez-le' },
-                    { n:4, t:'Activé sous 24h', d:'L\'admin valide votre abonnement' },
-                  ].map(s => (
-                    <div key={s.n} className="payment-step">
-                      <div className="step-num">{s.n}</div>
-                      <div><div className="step-title">{s.t}</div><div className="step-body">{s.d}</div></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {tab === 'profil' && (
-            <div>
-              <div className="section-title" style={{ marginBottom: 20 }}>
-                <div className="section-title-bar" /> <User size={20} /> Informations personnelles
-              </div>
-              <div className="card-surface">
-                <form onSubmit={saveProfile}>
-                  <div className="two-col">
-                    <div className="form-group">
-                      <label className="form-label">Nom complet</label>
-                      <input className="form-control" value={profileForm.nom||''} placeholder="Votre nom"
-                        onChange={e => setProfileForm(f=>({...f,nom:e.target.value}))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Téléphone / WhatsApp</label>
-                      <input className="form-control" value={profileForm.telephone||''} placeholder="+226 XX XX XX XX"
-                        onChange={e => setProfileForm(f=>({...f,telephone:e.target.value}))} />
-                    </div>
-                  </div>
-                  <div className="two-col">
-                    <div className="form-group">
-                      <label className="form-label">Ville</label>
-                      <input className="form-control" value={profileForm.ville||''} placeholder="Votre ville"
-                        onChange={e => setProfileForm(f=>({...f,ville:e.target.value}))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Secteur</label>
-                      <input className="form-control" value={profileForm.secteur||''} placeholder="Votre domaine"
-                        onChange={e => setProfileForm(f=>({...f,secteur:e.target.value}))} />
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Bio / Description</label>
-                    <textarea className="form-control" value={profileForm.bio||''} placeholder="Parlez de vous ou de votre entreprise..."
-                      onChange={e => setProfileForm(f=>({...f,bio:e.target.value}))} rows={3} />
-                  </div>
-                  {(profile?.abonnement === 'certified' || profile?.certifie) && (
-                    <div className="form-group">
-                      <label className="form-label">Entreprise</label>
-                      <input className="form-control" value={profileForm.entreprise_nom||''} placeholder="Nom de l'entreprise"
-                        onChange={e => setProfileForm(f=>({...f,entreprise_nom:e.target.value}))} />
-                    </div>
-                  )}
-                  <div className="form-group">
-                    <label className="form-label">Notifications</label>
-                    <div style={{ display: 'flex', gap: 20, fontSize: 14, color: 'var(--text2)' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={profileForm.notif_new_message}
-                          onChange={e => setProfileForm(f=>({...f,notif_new_message:e.target.checked}))}
-                          style={{ accentColor: 'var(--vert)' }} />
-                        Nouveaux messages
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={profileForm.notif_livraison}
-                          onChange={e => setProfileForm(f=>({...f,notif_livraison:e.target.checked}))}
-                          style={{ accentColor: 'var(--vert)' }} />
-                        Statut livraisons
-                      </label>
-                    </div>
-                  </div>
-                  <div style={{ display:'flex', gap:12 }}>
-                    <motion.button type="submit" className="btn btn-primary"
-                      disabled={saving} style={{ borderRadius:'var(--radius-sm)' }}
-                      whileHover={{ scale: saving ? 1 : 1.03 }}
-                      whileTap={{ scale: saving ? 1 : 0.97 }}>
-                      {saving ? <><span className="btn-spinner" /> Sauvegarde...</> : '✅ Sauvegarder'}
-                    </motion.button>
-                  </div>
-                </form>
-              </div>
-              <div className="card-surface">
-                <div className="card-surface-title"><Settings size={18} /> Compte</div>
-                <div style={{ fontSize:14, color:'var(--text2)', lineHeight:1.7 }}>
-                  <div><strong style={{ color: 'white' }}>Email :</strong> {user?.email}</div>
-                  <div><strong style={{ color: 'white' }}>Membre depuis :</strong> {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR') : '—'}</div>
-                  <div><strong style={{ color: 'white' }}>Formule :</strong> {FORMULAS[formuleKey]?.name || 'Basique'}</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
-
       <AnimatePresence>
-        {editAnnonce && (
-          <AnnonceModal annonce={editAnnonce}
-            onClose={() => setEditAnnonce(null)}
-            onSaved={fetchAnnonces} />
-        )}
+        {editAnnonce && <AnnonceModal annonce={editAnnonce} onClose={() => { setEditAnnonce(null); fetchAnnonces(); }} onSaved={() => { setEditAnnonce(null); fetchAnnonces(); toast.success('Annonce mise à jour'); }} />}
       </AnimatePresence>
-
       <AnimatePresence>
-        {showPaiement && (
-          <PaiementModal formule={showPaiement}
-            onClose={() => setShowPaiement('')}
-            onSuccess={() => { setShowPaiement(''); refreshProfile(); }} />
-        )}
+        {showPaiement && <PaiementModal formule={showPaiement} onClose={() => setShowPaiement('')} onSuccess={() => { setShowPaiement(''); refreshProfile(); }} />}
       </AnimatePresence>
-
       <AnimatePresence>
-        {posterAnnonce && (
-          <PosterGenerator annonce={posterAnnonce}
-            onClose={() => setPosterAnnonce(null)} />
-        )}
+        {posterAnnonce && <PosterGenerator annonce={posterAnnonce} onClose={() => setPosterAnnonce(null)} />}
       </AnimatePresence>
     </div>
   );

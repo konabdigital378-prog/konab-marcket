@@ -4,11 +4,6 @@ import { ShoppingBag, MapPin, Eye, Star, Heart, MessageCircle, Navigation, Zap }
 import { supabase, TYPE_ANNONCE, haversine } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 
-const TYPE_CLASS = {
-  offre: 'type-offre', emploi: 'type-emploi',
-  formation: 'type-formation', article: 'type-article', recherche: 'type-recherche'
-};
-
 export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, onClick, showFavoriBtn, userCoords }) {
   const { user } = useAuth();
   const [favori, setFavori] = useState(false);
@@ -69,6 +64,7 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
 
   const prix = formatPrix(annonce.prix);
   const initials = (annonce.profiles?.nom || 'U').slice(0, 2).toUpperCase();
+  const hasDiscount = annonce.prix_original && annonce.prix < annonce.prix_original;
 
   return (
     <motion.div className="product-card"
@@ -77,48 +73,58 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
       onClick={() => onClick && onClick(annonce.id)}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      {annonce.profiles?.certifie && (
-        <div className="product-card-certified">
-          <Star size={10} style={{ display: 'inline', marginRight: 2 }} /> Certifié
-        </div>
-      )}
-
-      {promoBadge && !annonce.profiles?.certifie && (
-        <div className="product-card-badge" style={{ background: 'linear-gradient(135deg, var(--orange), #e06000)' }}>
-          {promoBadge.text}
-        </div>
-      )}
-
-      {showFavoriBtn && user && !isOwner && (
-        <motion.button className="product-card-favori"
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleFavori}>
-          <Heart size={16} fill={favori ? 'var(--danger)' : 'none'} color={favori ? 'var(--danger)' : 'rgba(255,255,255,0.7)'} />
-        </motion.button>
-      )}
-
       <div className="product-card-img">
         {(annonce.affiche_url || annonce.images?.[0])
           ? <img src={annonce.affiche_url || annonce.images?.[0]} alt={annonce.titre} loading="lazy" />
-          : <ShoppingBag size={48} style={{ color: 'rgba(255,255,255,0.15)' }} />
+          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <ShoppingBag size={48} style={{ color: 'var(--text3)' }} />
+            </div>
         }
-        {(annonce.affiche_url || annonce.images?.[0]) && <div className="product-card-img-overlay" />}
+        <div className="product-card-img-overlay" />
+
+        {annonce.profiles?.certifie && (
+          <div className="product-card-certified">
+            <Star size={10} style={{ display: 'inline', marginRight: 2 }} /> Certifié
+          </div>
+        )}
+        {promoBadge && !annonce.profiles?.certifie && (
+          <div className="product-card-badge" style={{ background: 'var(--orange)' }}>
+            {promoBadge.text}
+          </div>
+        )}
+        {hasDiscount && (
+          <div className="product-card-badge" style={{ background: 'var(--danger)', left: 'auto', right: 10 }}>
+            -{Math.round((1 - annonce.prix / annonce.prix_original) * 100)}%
+          </div>
+        )}
+        {showFavoriBtn && user && !isOwner && (
+          <motion.button className="product-card-favori"
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleFavori}>
+            <Heart size={16} fill={favori ? 'var(--danger)' : 'none'} color={favori ? 'var(--danger)' : 'var(--text3)'} />
+          </motion.button>
+        )}
         {(annonce.images?.length || 0) > 1 && (
-          <div className="badge" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, fontSize: 10, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none' }}>
+          <div className="badge" style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 2, fontSize: 10, background: 'rgba(255,255,255,0.95)', color: 'var(--text)', border: 'none' }}>
             +{annonce.images.length} photos
           </div>
         )}
         {distance !== null && distance <= 50 && (
-          <div className="badge badge-success" style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, fontSize: 10 }}>
+          <div className="badge badge-success" style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 2, fontSize: 10 }}>
             <Navigation size={10} style={{ display: 'inline' }} /> {distance} km
           </div>
         )}
       </div>
 
       <div className="product-card-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-          <span className={`product-card-type ${TYPE_CLASS[annonce.type] || 'type-offre'}`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            padding: '2px 8px', borderRadius: 6,
+            fontSize: 10, fontWeight: 600,
+            background: 'var(--vert-bg)', color: 'var(--vert-dark)',
+          }}>
             {typeInfo.icon} {typeInfo.label}
           </span>
           {annonce.prix > 0 && annonce.prix < 10000 && (
@@ -131,19 +137,26 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
         <div className="product-card-title">{annonce.titre}</div>
         <div className="product-card-desc">{annonce.description}</div>
 
-        {prix && <div className="product-card-price">{prix}</div>}
+        {prix && (
+          <div className="product-card-price">
+            {prix}
+            {hasDiscount && <span className="product-card-price-old">{formatPrix(annonce.prix_original)}</span>}
+          </div>
+        )}
 
-        <div className="product-card-meta" style={{ marginTop: 'auto', paddingTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+          <div className="product-card-stars">★★★★★</div>
+          <span className="product-card-rating-count">(0)</span>
+        </div>
+
+        <div className="product-card-meta">
           <span><MapPin size={11} style={{ display: 'inline' }} /> {annonce.ville || 'Non précisé'}</span>
           {distance !== null && (
             <><span className="product-card-meta-dot" />
-              <span style={{ color: distance <= 10 ? 'var(--vert)' : 'var(--text2)' }}>
+              <span style={{ color: distance <= 10 ? 'var(--vert)' : 'var(--text3)' }}>
                 <Navigation size={11} style={{ display: 'inline' }} /> {distance} km
               </span>
             </>
-          )}
-          {annonce.date_fin && (
-            <><span className="product-card-meta-dot" /><span>📅 {new Date(annonce.date_fin).toLocaleDateString('fr-FR')}</span></>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text3)' }}>
             <Eye size={11} /> {annonce.vues || 0}
@@ -160,7 +173,7 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
               {annonce.profiles?.certifie && <Star size={11} style={{ color: 'var(--vert)' }} />}
             </div>
             <motion.button className="btn btn-primary btn-sm"
-              style={{ borderRadius: 'var(--radius-sm)' }}
+              style={{ borderRadius: 8 }}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={handleWhatsApp}>
@@ -171,11 +184,11 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
         ) : (
           <div style={{ display: 'flex', gap: 8, width: '100%' }}>
             <motion.button className="btn btn-ghost btn-sm"
-              style={{ flex: 1, justifyContent: 'center', borderRadius: 'var(--radius-sm)' }}
+              style={{ flex: 1, justifyContent: 'center', borderRadius: 8 }}
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               onClick={(e) => { e.stopPropagation(); onEdit && onEdit(annonce); }}>Modifier</motion.button>
             <motion.button className="btn btn-sm"
-              style={{ background: 'rgba(255,71,87,0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '7px 14px' }}
+              style={{ background: 'rgba(239,68,68,0.08)', color: 'var(--danger)', borderRadius: 8, padding: '7px 14px' }}
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               onClick={(e) => { e.stopPropagation(); onDelete && onDelete(annonce.id); }}>Supprimer</motion.button>
           </div>
