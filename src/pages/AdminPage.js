@@ -16,12 +16,16 @@ export default function AdminPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: u }, { data: p }, { data: a }] = await Promise.all([
-      supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-      supabase.from('paiements').select('*, profiles(nom, email)').order('created_at', { ascending: false }),
-      supabase.from('annonces').select('*, profiles(nom, email)').order('created_at', { ascending: false }),
-    ]);
-    setUsers(u||[]); setPaiements(p||[]); setAnnonces(a||[]);
+    try {
+      const [{ data: u }, { data: p }, { data: a }] = await Promise.all([
+        supabase.rpc('admin_get_profiles'),
+        supabase.rpc('admin_get_paiements'),
+        supabase.rpc('admin_get_annonces'),
+      ]);
+      setUsers(u||[]); setPaiements(p||[]); setAnnonces(a||[]);
+    } catch (err) {
+      toast('Erreur chargement admin : ' + err.message, 'error');
+    }
     setLoading(false);
   }, []);
 
@@ -41,28 +45,41 @@ export default function AdminPage() {
   }, [isAdmin, fetchAll]);
 
   async function validerPaiement(p) {
-    const expire = new Date();
-    expire.setMonth(expire.getMonth() + 1);
-    await supabase.from('paiements').update({ statut:'valide', valide_le: new Date().toISOString() }).eq('id', p.id);
-    await supabase.from('profiles').update({ abonnement: p.formule, abonnement_expire: expire.toISOString(), certifie: p.formule==='certified' }).eq('id', p.user_id);
-    fetchAll();
-    toast(`✅ Abonnement ${FORMULAS[p.formule]?.name} activé`, 'success');
+    try {
+      await supabase.rpc('admin_valider_paiement', { p_id: p.id, p_formule: p.formule, p_user_id: p.user_id });
+      fetchAll();
+      toast(`✅ Abonnement ${FORMULAS[p.formule]?.name} activé`, 'success');
+    } catch (err) {
+      toast('Erreur validation : ' + err.message, 'error');
+    }
   }
 
   async function refuserPaiement(id) {
-    await supabase.from('paiements').update({ statut:'refuse' }).eq('id', id);
-    fetchAll();
+    try {
+      await supabase.rpc('admin_refuser_paiement', { p_id: id });
+      fetchAll();
+    } catch (err) {
+      toast('Erreur refus : ' + err.message, 'error');
+    }
   }
 
   async function toggleAnnonce(a) {
-    await supabase.from('annonces').update({ actif: !a.actif }).eq('id', a.id);
-    fetchAll();
+    try {
+      await supabase.rpc('admin_toggle_annonce', { p_id: a.id });
+      fetchAll();
+    } catch (err) {
+      toast('Erreur mise à jour : ' + err.message, 'error');
+    }
   }
 
   async function deleteAnnonce(id) {
     if (!window.confirm('Supprimer définitivement ?')) return;
-    await supabase.from('annonces').delete().eq('id', id);
-    fetchAll();
+    try {
+      await supabase.rpc('admin_delete_annonce', { p_id: id });
+      fetchAll();
+    } catch (err) {
+      toast('Erreur suppression : ' + err.message, 'error');
+    }
   }
 
   if (!isAdmin) return (

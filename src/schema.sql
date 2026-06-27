@@ -480,3 +480,125 @@ DROP TRIGGER IF EXISTS on_paiement_insert ON paiements;
 CREATE TRIGGER on_paiement_insert
   AFTER INSERT ON paiements
   FOR EACH ROW EXECUTE FUNCTION notifier_admin_paiement();
+
+-- Fonctions SECURITY DEFINER pour l'admin (contournent RLS)
+CREATE OR REPLACE FUNCTION admin_get_paiements()
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN
+    RAISE EXCEPTION 'Non autorisé';
+  END IF;
+  RETURN (
+    SELECT COALESCE(jsonb_agg(
+      jsonb_build_object(
+        'id', p.id, 'user_id', p.user_id, 'formule', p.formule,
+        'montant', p.montant, 'capture_url', p.capture_url,
+        'statut', p.statut, 'valide_le', p.valide_le,
+        'created_at', p.created_at,
+        'profiles', jsonb_build_object('nom', pr.nom, 'email', pr.email)
+      )
+      ORDER BY p.created_at DESC
+    ), '[]'::jsonb)
+    FROM paiements p
+    LEFT JOIN profiles pr ON pr.id = p.user_id
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION admin_get_profiles()
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN
+    RAISE EXCEPTION 'Non autorisé';
+  END IF;
+  RETURN (
+    SELECT COALESCE(jsonb_agg(
+      jsonb_build_object(
+        'id', id, 'email', email, 'nom', nom, 'telephone', telephone,
+        'ville', ville, 'secteur', secteur, 'abonnement', abonnement,
+        'abonnement_expire', abonnement_expire, 'certifie', certifie,
+        'created_at', created_at
+      )
+      ORDER BY created_at DESC
+    ), '[]'::jsonb)
+    FROM profiles
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION admin_get_annonces()
+RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN
+    RAISE EXCEPTION 'Non autorisé';
+  END IF;
+  RETURN (
+    SELECT COALESCE(jsonb_agg(
+      jsonb_build_object(
+        'id', a.id, 'user_id', a.user_id, 'type', a.type,
+        'titre', a.titre, 'description', a.description,
+        'prix', a.prix, 'devise', a.devise, 'images', a.images,
+        'secteur', a.secteur, 'ville', a.ville, 'vues', a.vues,
+        'actif', a.actif, 'created_at', a.created_at,
+        'profiles', jsonb_build_object('nom', pr.nom, 'email', pr.email)
+      )
+      ORDER BY a.created_at DESC
+    ), '[]'::jsonb)
+    FROM annonces a
+    LEFT JOIN profiles pr ON pr.id = a.user_id
+  );
+END;
+$$;
+
+-- Fonctions SECURITY DEFINER pour les actions admin (UPDATE/DELETE)
+CREATE OR REPLACE FUNCTION admin_valider_paiement(p_id UUID, p_formule TEXT, p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  v_expire TIMESTAMPTZ;
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN RAISE EXCEPTION 'Non autorisé'; END IF;
+  v_expire := NOW() + INTERVAL '1 month';
+  UPDATE paiements SET statut = 'valide', valide_le = NOW() WHERE id = p_id;
+  UPDATE profiles SET abonnement = p_formule, abonnement_expire = v_expire,
+    certifie = (p_formule = 'certified')
+  WHERE id = p_user_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION admin_refuser_paiement(p_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN RAISE EXCEPTION 'Non autorisé'; END IF;
+  UPDATE paiements SET statut = 'refuse' WHERE id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION admin_toggle_annonce(p_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN RAISE EXCEPTION 'Non autorisé'; END IF;
+  UPDATE annonces SET actif = NOT actif WHERE id = p_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION admin_delete_annonce(p_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  IF auth.email() != 'admin@gmail.com' THEN RAISE EXCEPTION 'Non autorisé'; END IF;
+  DELETE FROM annonces WHERE id = p_id;
+END;
+$$;
