@@ -368,13 +368,22 @@ input, select, textarea { font-family: var(--font); }
   z-index: 0;
 }
 
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.75) 40%, rgba(8,8,8,0.85) 100%);
+  z-index: 1;
+}
+
 .hero-bg-gradient {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background:
-    radial-gradient(ellipse at 20% 60%, rgba(57,211,83,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 30%, rgba(245,183,0,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(57,211,83,0.04) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 60%, rgba(57,211,83,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 30%, rgba(245,183,0,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(57,211,83,0.06) 0%, transparent 50%);
 }
 
 .hero-grid {
