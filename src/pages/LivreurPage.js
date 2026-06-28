@@ -126,17 +126,18 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
           .select('id')
           .eq('disponible', true);
         if (livreursDispo && livreursDispo.length > 0) {
-          for (const l of livreursDispo) {
-            await supabase.rpc('creer_notification', {
+          const notifPromises = livreursDispo.map(l =>
+            supabase.rpc('creer_notification', {
               p_user_id: l.id,
               p_type: 'livraison',
               p_title: 'Nouvelle demande de livraison',
               p_body: `${form.ville_ramassage} → ${form.ville_livraison} • ${calcEstime().toLocaleString()} FCFA`,
-              p_data: JSON.stringify({ livraison_id: newLiv.id, statut: 'en_attente' })
-            });
-          }
+              p_data: { livraison_id: newLiv.id, statut: 'en_attente' }
+            })
+          );
+          await Promise.all(notifPromises);
         }
-      } catch (_) {}
+      } catch (e) { console.error('notif erreur:', e); }
     }
 
     setSaving(false);
@@ -336,9 +337,9 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
           p_type: 'livraison',
           p_title: `Livraison ${label}`,
           p_body: `${liv.ville_ramassage} → ${liv.ville_livraison} • ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA`,
-          p_data: JSON.stringify({ livraison_id: livraisonId, statut })
+          p_data: { livraison_id: livraisonId, statut }
         });
-      } catch (_) {}
+      } catch (e) { console.error('notif erreur:', e); }
     }
   }
 
