@@ -47,6 +47,7 @@ function AppInner() {
   const [vendeurId, setVendeurId] = useState(null);
   const [initialChat, setInitialChat] = useState(null);
   const [livraisonDetailId, setLivraisonDetailId] = useState(null);
+  const [livraisonDetailData, setLivraisonDetailData] = useState(null);
   const [signalementAnnonceId, setSignalementAnnonceId] = useState(null);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ function AppInner() {
 
   function handleSignOut() { signOut(); nav('home'); addToast('Déconnexion réussie', 'success'); }
   function handleBackFromDetail() { nav('home'); }
-  function showLivraisonDetail(id) { setLivraisonDetailId(id); setPage('livraison_detail'); }
+  function showLivraisonDetail(id, data) { setLivraisonDetailId(id); setLivraisonDetailData(data || null); setPage('livraison_detail'); }
   function showLivraisonFromAnnonce() { setPage('livreur'); }
   function showSignalement(id) { setSignalementAnnonceId(id); }
 
@@ -251,7 +252,7 @@ function AppInner() {
             onBack={handleBackFromDetail} onShowDetail={showDetail} />}
           {page === 'messagerie' && <MessageriePage onBack={() => nav('home')} initialChat={initialChat} onShowDetail={showDetail} onShowVendeur={showVendeur} />}
           {page === 'livreur' && <LivreurPage onBack={() => nav('home')} onShowLivraisonDetail={showLivraisonDetail} />}
-          {page === 'livraison_detail' && <LivraisonDetailPage livraisonId={livraisonDetailId} onBack={() => nav('livreur')} />}
+          {page === 'livraison_detail' && <LivraisonDetailPage livraisonId={livraisonDetailId} initialData={livraisonDetailData} onBack={() => nav('livreur')} />}
           {page === 'categories' && <CategoriesPage onShowDetail={showDetail} />}
         </motion.div>
       </AnimatePresence>

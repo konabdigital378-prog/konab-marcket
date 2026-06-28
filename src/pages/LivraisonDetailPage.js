@@ -14,9 +14,9 @@ const STATUTS = [
 
 const STATUT_INDEX = { en_attente: 0, acceptee: 1, en_cours: 2, livree: 3, annulee: -1 };
 
-export default function LivraisonDetailPage({ livraisonId, onBack }) {
+export default function LivraisonDetailPage({ livraisonId, initialData, onBack }) {
   const { user } = useAuth();
-  const [livraison, setLivraison] = useState(null);
+  const [livraison, setLivraison] = useState(initialData || null);
   const [livreur, setLivreur] = useState(null);
   const [note, setNote] = useState(0);
   const [commentaire, setCommentaire] = useState('');
@@ -34,10 +34,11 @@ export default function LivraisonDetailPage({ livraisonId, onBack }) {
   }, [livraisonId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadLivraison() {
-    const { data } = await supabase.from('livraisons')
+    const { data, error } = await supabase.from('livraisons')
       .select('*, annonces(titre, prix)')
       .eq('id', livraisonId)
-      .single();
+      .maybeSingle();
+    if (error) console.error('loadLivraison error:', error.message);
     if (data) {
       setLivraison(data);
       setNote(data.note_livreur || 0);
@@ -45,7 +46,7 @@ export default function LivraisonDetailPage({ livraisonId, onBack }) {
       if (data.livreur_id) {
         const { data: l } = await supabase.from('livreurs')
           .select('*, profiles:profiles!livreurs_id_fkey(nom, telephone)')
-          .eq('id', data.livreur_id).single();
+          .eq('id', data.livreur_id).maybeSingle();
         if (l) setLivreur(l);
       }
     }

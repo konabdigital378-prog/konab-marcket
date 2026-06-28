@@ -732,7 +732,7 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
                 {mesCmd.map(l => (
                   <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     whileHover={{ y: -2, borderColor: 'rgba(57,211,83,0.2)' }}
-                    onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id)}
+                    onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id, l)}
                     style={{ cursor: 'pointer' }}>
                     <div className="livraison-card-top">
                       <span className="livraison-annonce">{l.annonces?.titre || 'Livraison'}</span>
@@ -805,7 +805,7 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
                 return (
                 <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -2, borderColor: 'rgba(57,211,83,0.2)' }}
-                  onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id)}
+                  onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id, l)}
                   style={{ cursor: 'pointer', borderLeft: isAvailable ? '3px solid var(--or)' : undefined }}>
                   <div className="livraison-card-top">
                     <span className="livraison-annonce">
