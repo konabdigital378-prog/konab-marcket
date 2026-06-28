@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, User, Plus, Calculator, ExternalLink, Search, Crosshair, QrCode, Bell } from 'lucide-react';
 import { supabase, haversine, VILLES_COORDS } from '../supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, ensureSession } from '../hooks/useAuth';
 import { SkeletonCards } from '../components/Skeleton';
 import { DeliveryCard } from '../components/DeliveryCard';
 
@@ -137,6 +137,11 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     if (!user) return;
     setSaving(true);
     setSentError('');
+    try { await ensureSession(); } catch (err) {
+      setSaving(false);
+      setSentError('Session expirée. Reconnectez-vous.');
+      return;
+    }
     const { data: newLiv, error: insertErr } = await supabase.from('livraisons').insert({
       annonce_id: annonceId || null,
       acheteur_id: user.id,
@@ -442,6 +447,7 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
   }
 
   async function updateStatut(livraisonId, statut) {
+    try { await ensureSession(); } catch (_) { return; }
     const updateData = { statut, updated_at: new Date().toISOString() };
     if (statut === 'acceptee') {
       updateData.livreur_id = user.id;

@@ -3,6 +3,17 @@ import { supabase, ADMIN_EMAIL, FORMULAS } from '../supabase';
 
 const AuthContext = createContext({});
 
+export async function ensureSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Non connecté. Reconnectez-vous.');
+  const now = Math.floor(Date.now() / 1000);
+  if (session.expires_at && session.expires_at - now < 300) {
+    const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+    if (refreshed) return refreshed;
+  }
+  return session;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null);
   const [profile, setProfile] = useState(null);
@@ -27,13 +38,34 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Petit délai pour laisser le trigger créer le profil
         setTimeout(() => loadProfile(session.user.id), 500);
       } else {
         setProfile(null);
       }
     });
-    return () => listener.subscription.unsubscribe();
+
+    const refreshInterval = setInterval(async () => {
+      try { await supabase.auth.refreshSession(); } catch (_) {}
+    }, 10 * 60 * 1000);
+
+    const onFocus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const now = Math.floor(Date.now() / 1000);
+          if (session.expires_at && session.expires_at - now < 600) {
+            await supabase.auth.refreshSession();
+          }
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      listener.subscription.unsubscribe();
+      clearInterval(refreshInterval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   // INSCRIPTION — passe nom+telephone dans les metadata Supabase
