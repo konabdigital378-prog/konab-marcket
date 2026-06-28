@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image as ImageIcon } from 'lucide-react';
+import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image as ImageIcon, Camera } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
@@ -9,6 +9,7 @@ import { toast } from '../components/Toast';
 import AnnonceModal from '../components/AnnonceModal';
 import PaiementModal from '../components/PaiementModal';
 import PosterGenerator from '../components/PosterGenerator';
+import { QRScannerModal } from '../components/DeliveryCard';
 
 export default function DashboardPage({ onShowCreate }) {
   const { user, profile, refreshProfile, maxAnnonces } = useAuth();
@@ -32,6 +33,7 @@ export default function DashboardPage({ onShowCreate }) {
   const [loadingLiv, setLoadingLiv] = useState(false);
   const [msgCount, setMsgCount] = useState(0);
   const [posterAnnonce, setPosterAnnonce] = useState(null);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     if (profile) setProfileForm({ nom: profile.nom||'', telephone: profile.telephone||'', ville: profile.ville||'', secteur: profile.secteur||'', entreprise_nom: profile.entreprise_nom||'', bio: profile.bio||'', notif_new_message: profile.notif_new_message !== false, notif_livraison: profile.notif_livraison !== false });
@@ -463,9 +465,16 @@ export default function DashboardPage({ onShowCreate }) {
 
           {tab === 'commandes' && (
             <div>
-              <div className="section-title" style={{ marginBottom: 20 }}>
-                <div className="section-title-bar" />
-                <Truck size={20} /> Historique des commandes ({livraisonsUser.length})
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+                <div className="section-title">
+                  <div className="section-title-bar" />
+                  <Truck size={20} /> Historique des commandes ({livraisonsUser.length})
+                </div>
+                <motion.button className="btn btn-primary btn-sm"
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowQRScanner(true)}>
+                  <Camera size={16} /> Valider ma livraison
+                </motion.button>
               </div>
               {loadingLiv ? <div className="loader"><div className="spinner" /></div>
               : livraisonsUser.length === 0 ? (
@@ -792,6 +801,15 @@ export default function DashboardPage({ onShowCreate }) {
         {posterAnnonce && (
           <PosterGenerator annonce={posterAnnonce}
             onClose={() => setPosterAnnonce(null)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showQRScanner && (
+          <QRScannerModal
+            onClose={() => setShowQRScanner(false)}
+            onValidated={() => { setShowQRScanner(false); loadLivraisons(); }}
+          />
         )}
       </AnimatePresence>
     </div>

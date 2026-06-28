@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Clock, CheckCircle, XCircle, Truck, DollarSign, Phone, User, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, MapPin, Clock, CheckCircle, XCircle, Truck, DollarSign, Phone, User, Star, QrCode, Camera } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
+import { DeliveryCard, QRScannerModal } from '../components/DeliveryCard';
 
 const STATUTS = [
   { key: 'en_attente', label: 'En attente', desc: 'En attente d\'un coursier', icon: Clock, color: 'var(--or)' },
@@ -20,6 +21,7 @@ export default function LivraisonDetailPage({ livraisonId, onBack }) {
   const [note, setNote] = useState(0);
   const [commentaire, setCommentaire] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     loadLivraison();
@@ -125,6 +127,40 @@ export default function LivraisonDetailPage({ livraisonId, onBack }) {
         </div>
       </motion.div>
 
+      {livraison.statut === 'en_cours' && livraison.qr_token && (user?.id === livraison.acheteur_id) && (
+        <motion.div style={{ marginTop: 20 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <DeliveryCard
+            livraison={livraison}
+            livreurNom={livreur?.profiles?.nom || 'Coursier'}
+          />
+          <motion.button className="btn btn-primary btn-full" style={{ marginTop: 16 }}
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            onClick={() => setShowScanner(true)}>
+            <Camera size={18} /> Scanner le QR pour valider
+          </motion.button>
+        </motion.div>
+      )}
+
+      {livraison.statut === 'en_cours' && livraison.qr_token && (user?.id !== livraison.acheteur_id) && (
+        <motion.div style={{ marginTop: 20 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <DeliveryCard
+            livraison={livraison}
+            livreurNom={livreur?.profiles?.nom || 'Coursier'}
+          />
+        </motion.div>
+      )}
+
+      {livraison.statut === 'en_cours' && !livraison.qr_token && (
+        <motion.div className="card-surface" style={{ marginTop: 20, textAlign: 'center', padding: 24 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+          <QrCode size={36} style={{ color: 'var(--or)', marginBottom: 10 }} />
+          <h3 style={{ color: 'white', marginBottom: 6, fontSize: 15 }}>En cours de livraison</h3>
+          <p style={{ color: 'var(--text2)', fontSize: 13 }}>Le coursier est en route. La carte QR sera générée automatiquement.</p>
+        </motion.div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
         <motion.div className="card-surface" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <h3 style={{ color: 'white', fontSize: 15, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -228,6 +264,15 @@ export default function LivraisonDetailPage({ livraisonId, onBack }) {
           </motion.button>
         )}
       </div>
+
+      <AnimatePresence>
+        {showScanner && (
+          <QRScannerModal
+            onClose={() => setShowScanner(false)}
+            onValidated={() => loadLivraison()}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

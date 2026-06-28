@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus, Calculator, ExternalLink, Search, Crosshair } from 'lucide-react';
+import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus, Calculator, ExternalLink, Search, Crosshair, QrCode } from 'lucide-react';
 import { supabase, haversine, VILLES_COORDS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { SkeletonCards } from '../components/Skeleton';
+import { DeliveryCard } from '../components/DeliveryCard';
 
 const TYPE_VEHICULES = [
   { value: 'moto', label: 'Moto / Scooter', icon: '🏍️' },
@@ -277,7 +278,14 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
   }
 
   async function updateStatut(livraisonId, statut) {
-    const { data: liv } = await supabase.from('livraisons').update({ statut, updated_at: new Date().toISOString() }).eq('id', livraisonId).select('acheteur_id, prix_estime').single();
+    const updateData = { statut, updated_at: new Date().toISOString() };
+    if (statut === 'en_cours' && !mesLivraisons.find(l => l.id === livraisonId)?.qr_token) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let token = 'KBL-';
+      for (let i = 0; i < 8; i++) token += chars[Math.floor(Math.random() * chars.length)];
+      updateData.qr_token = token;
+    }
+    const { data: liv } = await supabase.from('livraisons').update(updateData).eq('id', livraisonId).select('acheteur_id, prix_estime').single();
     if (statut === 'livree' && monProfil) {
       await supabase.from('livreurs').update({ total_livraisons: (monProfil.total_livraisons || 0) + 1 }).eq('id', user.id);
     }
@@ -495,6 +503,24 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {mesLivs.filter(l => l.statut === 'en_cours' || l.statut === 'acceptee').length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div className="section-title" style={{ marginBottom: 12 }}>
+                    <div className="section-title-bar" /> <QrCode size={16} /> Carte de livraison active
+                  </div>
+                  {mesLivs.filter(l => (l.statut === 'en_cours' || l.statut === 'acceptee') && l.qr_token).map(l => (
+                    <DeliveryCard key={`card-${l.id}`} livraison={l} livreurNom={profile?.nom || 'Coursier'} />
+                  ))}
+                  {mesLivs.filter(l => (l.statut === 'en_cours' || l.statut === 'acceptee') && !l.qr_token).map(l => (
+                    <div key={`hint-${l.id}`} className="card-surface" style={{ padding: 16, textAlign: 'center', marginBottom: 10 }}>
+                      <QrCode size={24} style={{ color: 'var(--or)', marginBottom: 6 }} />
+                      <div style={{ color: 'var(--text2)', fontSize: 13 }}>
+                        Passez cette livraison <strong>"En cours"</strong> pour générer la carte QR
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {mesLivs.map(l => (
                 <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -2, borderColor: 'rgba(57,211,83,0.2)' }}
