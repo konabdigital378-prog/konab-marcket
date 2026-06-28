@@ -195,7 +195,24 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
 
     setSaving(false);
     setSentOk(true);
-    setTimeout(() => { onClose(true); }, 2000);
+    setTimeout(() => {
+      onClose(true, {
+        id: newLiv.id,
+        acheteur_id: user.id,
+        livreur_id: null,
+        statut: 'en_attente',
+        adresse_ramassage: form.adresse_ramassage,
+        adresse_livraison: form.adresse_livraison,
+        ville_ramassage: form.ville_ramassage,
+        ville_livraison: form.ville_livraison,
+        contact_expediteur: form.contact_expediteur,
+        contact_destinataire: form.contact_destinataire,
+        description_colis: form.description_colis,
+        prix_estime: calcEstime(),
+        created_at: new Date().toISOString(),
+        annonces: null,
+      });
+    }, 2000);
   }
 
   return (
@@ -929,7 +946,13 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
         {showRequest && (
           <RequestDeliveryModal
             prefillVille={prefillVille}
-            onClose={(saved) => { setShowRequest(false); if (saved) loadData(); }}
+            onClose={(saved, newLivraison) => {
+              setShowRequest(false);
+              if (saved && newLivraison) {
+                setMesLivraisons(prev => [newLivraison, ...prev]);
+              }
+              loadData();
+            }}
           />
         )}
       </AnimatePresence>
