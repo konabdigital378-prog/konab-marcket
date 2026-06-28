@@ -255,7 +255,7 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
     if (l) setLivreurs(l);
 
     if (user) {
-      const { data: mp } = await supabase.from('livreurs').select('*').eq('id', user.id).single();
+      const { data: mp } = await supabase.from('livreurs').select('*').eq('id', user.id).maybeSingle();
       if (mp) setMonProfil(mp);
 
       const { data: mesLivs } = await supabase.from('livraisons')
@@ -264,18 +264,19 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
         .order('created_at', { ascending: false });
 
       let allLivs = mesLivs || [];
-      if (mp) {
-        const { data: dispoLivs } = await supabase.from('livraisons')
-          .select('*, annonces(titre)')
-          .eq('statut', 'en_attente')
-          .is('livreur_id', null)
-          .order('created_at', { ascending: false });
-        if (dispoLivs) {
-          const existingIds = new Set(allLivs.map(l => l.id));
-          const newOnes = dispoLivs.filter(l => !existingIds.has(l.id));
-          allLivs = [...allLivs, ...newOnes];
-        }
+
+      const { data: dispoLivs } = await supabase.from('livraisons')
+        .select('*, annonces(titre)')
+        .eq('statut', 'en_attente')
+        .is('livreur_id', null)
+        .order('created_at', { ascending: false });
+
+      if (dispoLivs) {
+        const existingIds = new Set(allLivs.map(l => l.id));
+        const newOnes = dispoLivs.filter(l => !existingIds.has(l.id));
+        allLivs = [...allLivs, ...newOnes];
       }
+
       setMesLivraisons(allLivs);
     }
     setLoading(false);
