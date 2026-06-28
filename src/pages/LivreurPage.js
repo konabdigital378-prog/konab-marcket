@@ -120,7 +120,6 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     contact_expediteur: user?.email || '',
     contact_destinataire: '',
     description_colis: '',
-    photo_url: '',
   });
   const [saving, setSaving] = useState(false);
   const [sentOk, setSentOk] = useState(false);
@@ -142,7 +141,7 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
       setSentError('Session expirée. Reconnectez-vous.');
       return;
     }
-    const { data: newLiv, error: insertErr } = await supabase.from('livraisons').insert({
+    const insertData = {
       annonce_id: annonceId || null,
       acheteur_id: user.id,
       adresse_ramassage: form.adresse_ramassage,
@@ -153,8 +152,8 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
       contact_destinataire: form.contact_destinataire,
       description_colis: form.description_colis,
       prix_estime: calcEstime(),
-      photo_url: form.photo_url || null,
-    }).select('id').single();
+    };
+    const { data: newLiv, error: insertErr } = await supabase.from('livraisons').insert(insertData).select('id').single();
 
     if (insertErr) {
       setSaving(false);
