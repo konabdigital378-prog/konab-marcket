@@ -86,6 +86,7 @@ export default function LivraisonDetailPage({ livraisonId, initialData, onBack }
   const currentIdx = STATUT_INDEX[livraison.statut] ?? -1;
   const isAcheteur = user?.id === livraison.acheteur_id;
   const statutInfo = STATUTS.find(s => s.key === livraison.statut);
+  const StatutIcon = statutInfo?.icon;
 
   function getWhatsAppLink(tel, msg) {
     const phone = (tel || '').replace(/[^0-9]/g, '');
@@ -111,7 +112,7 @@ export default function LivraisonDetailPage({ livraisonId, initialData, onBack }
             </div>
           </div>
           <span className="livraison-statut" style={{ color: statutInfo?.color, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {statutInfo?.icon} {statutInfo?.label}
+            {StatutIcon && <StatutIcon size={16} />} {statutInfo?.label}
           </span>
         </div>
 
