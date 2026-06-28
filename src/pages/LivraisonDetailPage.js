@@ -25,6 +25,12 @@ export default function LivraisonDetailPage({ livraisonId, onBack }) {
 
   useEffect(() => {
     loadLivraison();
+    const ch = supabase.channel('status-alerts');
+    ch.on('broadcast', { event: 'status_update' }, ({ payload }) => {
+      if (payload?.livraison_id === livraisonId) loadLivraison();
+    });
+    ch.subscribe();
+    return () => supabase.removeChannel(ch);
   }, [livraisonId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadLivraison() {

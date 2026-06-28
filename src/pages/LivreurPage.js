@@ -154,24 +154,22 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
           .select('id')
           .eq('disponible', true);
         if (livreursDispo && livreursDispo.length > 0) {
-          const notifPayload = livreursDispo.map(l => ({
-            user_id: l.id,
-            type: 'livraison',
-            title: '📢 Nouvelle demande de livraison',
-            body: `${form.ville_ramassage} → ${form.ville_livraison} • ${calcEstime().toLocaleString()} FCFA`,
-            data: { livraison_id: newLiv.id, statut: 'en_attente' },
-          }));
-          await supabase.from('notifications').insert(notifPayload);
-          const { error: rpcErr } = await supabase.rpc('creer_notification', {
-            p_user_id: livreursDispo[0]?.id,
-            p_type: 'livraison',
-            p_title: '📢 Nouvelle demande',
-            p_body: `${form.ville_ramassage} → ${form.ville_livraison}`,
-            p_data: { livraison_id: newLiv.id, statut: 'en_attente' }
+          const channel = supabase.channel('delivery-alerts');
+          await channel.send({
+            type: 'broadcast',
+            event: 'new_delivery',
+            payload: {
+              livraison_id: newLiv.id,
+              acheteur_id: user.id,
+              ville_ramassage: form.ville_ramassage,
+              ville_livraison: form.ville_livraison,
+              prix_estime: calcEstime(),
+              description_colis: form.description_colis,
+              created_at: new Date().toISOString(),
+            }
           });
-          if (rpcErr) console.log('RPC fallback:', rpcErr.message);
         }
-      } catch (e) { console.error('notif erreur:', e); }
+      } catch (e) { console.error('broadcast erreur:', e); }
     }
 
     setSaving(false);
@@ -285,20 +283,40 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
 
   useEffect(() => {
     loadData();
-    const sub = supabase.channel('livraisons_realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'livraisons' }, (payload) => {
-        const newLiv = payload.new;
-        if (newLiv && newLiv.statut === 'en_attente' && !newLiv.livreur_id && newLiv.acheteur_id !== user?.id) {
-          if (!seenDeliveryIds.current.has(newLiv.id)) {
-            seenDeliveryIds.current.add(newLiv.id);
-            playSoundAndShowAlert(newLiv);
-          }
+
+    const broadcastChannel = supabase.channel('delivery-alerts');
+    broadcastChannel.on('broadcast', { event: 'new_delivery' }, ({ payload }) => {
+      if (payload && payload.acheteur_id !== user?.id) {
+        if (!seenDeliveryIds.current.has(payload.livraison_id)) {
+          seenDeliveryIds.current.add(payload.livraison_id);
+          playSoundAndShowAlert(payload);
         }
-        loadData();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'livraisons' }, () => loadData())
+      }
+      loadData();
+    });
+    broadcastChannel.subscribe();
+
+    const dataSub = supabase.channel('livraisons_data')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'livraisons' }, () => loadData())
       .subscribe();
-    return () => supabase.removeChannel(sub);
+
+    const statusChannel = supabase.channel('status-alerts');
+    statusChannel.on('broadcast', { event: 'status_update' }, ({ payload }) => {
+      if (payload && (payload.acheteur_id === user?.id || payload.livreur_id === user?.id)) {
+        playNewDeliverySound();
+        setNewDeliveryAlert({ ...payload, isStatus: true });
+        if (alertTimeout.current) clearTimeout(alertTimeout.current);
+        alertTimeout.current = setTimeout(() => setNewDeliveryAlert(null), 6000);
+      }
+      loadData();
+    });
+    statusChannel.subscribe();
+
+    return () => {
+      supabase.removeChannel(broadcastChannel);
+      supabase.removeChannel(statusChannel);
+      supabase.removeChannel(dataSub);
+    };
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadData() {
@@ -389,14 +407,22 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
     if (liv) {
       try {
         const label = { acceptee: 'acceptée', en_cours: 'en cours de livraison', livree: 'livrée', annulee: 'annulée' }[statut] || statut;
-        await supabase.from('notifications').insert({
-          user_id: liv.acheteur_id,
-          type: 'livraison',
-          title: `Livraison ${label}`,
-          body: `${liv.ville_ramassage} → ${liv.ville_livraison} • ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA`,
-          data: { livraison_id: livraisonId, statut }
+        const statusChannel = supabase.channel('status-alerts');
+        await statusChannel.send({
+          type: 'broadcast',
+          event: 'status_update',
+          payload: {
+            livraison_id: livraisonId,
+            acheteur_id: liv.acheteur_id,
+            livreur_id: user.id,
+            statut,
+            label,
+            ville_ramassage: liv.ville_ramassage,
+            ville_livraison: liv.ville_livraison,
+            prix_estime: liv.prix_estime,
+          }
         });
-      } catch (e) { console.error('notif erreur:', e); }
+      } catch (e) { console.error('broadcast erreur:', e); }
     }
   }
 
@@ -492,18 +518,23 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, var(--or), var(--vert), var(--or))' }} />
             <div style={{
               width: 44, height: 44, borderRadius: 12,
-              background: 'linear-gradient(135deg, var(--or), #F89C1C)',
+              background: newDeliveryAlert.isStatus
+                ? 'linear-gradient(135deg, var(--vert), var(--vert-dark))'
+                : 'linear-gradient(135deg, var(--or), #F89C1C)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}>
               <Bell size={22} color="white" />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, color: 'var(--or)', fontSize: 14, marginBottom: 2 }}>
-                📢 Nouvelle demande de livraison !
+              <div style={{ fontWeight: 700, color: newDeliveryAlert.isStatus ? 'var(--vert)' : 'var(--or)', fontSize: 14, marginBottom: 2 }}>
+                {newDeliveryAlert.isStatus
+                  ? `✅ Livraison ${newDeliveryAlert.label || 'mise à jour'}`
+                  : '📢 Nouvelle demande de livraison !'}
               </div>
               <div style={{ color: 'var(--text2)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {newDeliveryAlert.ville_ramassage} → {newDeliveryAlert.ville_livraison} • {(newDeliveryAlert.prix_estime || 0).toLocaleString()} FCFA
+                {newDeliveryAlert.ville_ramassage} → {newDeliveryAlert.ville_livraison}
+                {(newDeliveryAlert.prix_estime || 0) > 0 && ` • ${newDeliveryAlert.prix_estime.toLocaleString()} FCFA`}
               </div>
             </div>
             <motion.button
