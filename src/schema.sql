@@ -293,12 +293,22 @@ ALTER TABLE livraisons ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Livraisons visibles par participants" ON livraisons;
 DROP POLICY IF EXISTS "Livraisons créables" ON livraisons;
 DROP POLICY IF EXISTS "Livraisons modifiables par participants" ON livraisons;
+DROP POLICY IF EXISTS "Livraisons visibles livreurs" ON livraisons;
 
 CREATE POLICY "Livraisons visibles par participants" ON livraisons
   FOR SELECT USING (
     auth.uid() = acheteur_id OR
     auth.uid() = livreur_id OR
-    EXISTS (SELECT 1 FROM annonces WHERE annonces.id = livraisons.annonce_id AND annonces.user_id = auth.uid())
+    EXISTS (SELECT 1 FROM annonces WHERE annonces.id = livraisons.annonce_id AND annonces.user_id = auth.uid()) OR
+    (
+      statut = 'en_attente' AND livreur_id IS NULL AND
+      EXISTS (SELECT 1 FROM livreurs WHERE livreurs.id = auth.uid() AND livreurs.disponible = true)
+    )
+  );
+
+CREATE POLICY "Livraisons visibles livreurs" ON livraisons
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM livreurs WHERE livreurs.id = auth.uid())
   );
 
 CREATE POLICY "Livraisons créables" ON livraisons
@@ -307,7 +317,11 @@ CREATE POLICY "Livraisons créables" ON livraisons
 CREATE POLICY "Livraisons modifiables par participants" ON livraisons
   FOR UPDATE USING (
     auth.uid() = acheteur_id OR
-    auth.uid() = livreur_id
+    auth.uid() = livreur_id OR
+    (
+      statut = 'en_attente' AND
+      EXISTS (SELECT 1 FROM livreurs WHERE livreurs.id = auth.uid())
+    )
   );
 
 -- Table signalements
