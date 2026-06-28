@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, Phone, User, Plus, Calculator, ExternalLink, Search, Crosshair, QrCode } from 'lucide-react';
+import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, User, Plus, Calculator, ExternalLink, Search, Crosshair, QrCode } from 'lucide-react';
 import { supabase, haversine, VILLES_COORDS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { SkeletonCards } from '../components/Skeleton';
@@ -106,7 +106,7 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    await supabase.from('livraisons').insert({
+    const { data: newLiv } = await supabase.from('livraisons').insert({
       annonce_id: annonceId || null,
       acheteur_id: user.id,
       adresse_ramassage: form.adresse_ramassage,
@@ -118,7 +118,27 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
       description_colis: form.description_colis,
       prix_estime: calcEstime(),
       photo_url: form.photo_url || null,
-    });
+    }).select('id').single();
+
+    if (newLiv) {
+      try {
+        const { data: livreursDispo } = await supabase.from('livreurs')
+          .select('id')
+          .eq('disponible', true);
+        if (livreursDispo && livreursDispo.length > 0) {
+          for (const l of livreursDispo) {
+            await supabase.rpc('creer_notification', {
+              p_user_id: l.id,
+              p_type: 'livraison',
+              p_title: 'Nouvelle demande de livraison',
+              p_body: `${form.ville_ramassage} → ${form.ville_livraison} • ${calcEstime().toLocaleString()} FCFA`,
+              p_data: JSON.stringify({ livraison_id: newLiv.id, statut: 'en_attente' })
+            });
+          }
+        }
+      } catch (_) {}
+    }
+
     setSaving(false);
     onClose(true);
   }
@@ -236,11 +256,26 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
     if (user) {
       const { data: mp } = await supabase.from('livreurs').select('*').eq('id', user.id).single();
       if (mp) setMonProfil(mp);
-      const { data: livs } = await supabase.from('livraisons')
+
+      const { data: mesLivs } = await supabase.from('livraisons')
         .select('*, annonces(titre)')
         .or(`acheteur_id.eq.${user.id},livreur_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
-      if (livs) setMesLivraisons(livs);
+
+      let allLivs = mesLivs || [];
+      if (mp) {
+        const { data: dispoLivs } = await supabase.from('livraisons')
+          .select('*, annonces(titre)')
+          .eq('statut', 'en_attente')
+          .is('livreur_id', null)
+          .order('created_at', { ascending: false });
+        if (dispoLivs) {
+          const existingIds = new Set(allLivs.map(l => l.id));
+          const newOnes = dispoLivs.filter(l => !existingIds.has(l.id));
+          allLivs = [...allLivs, ...newOnes];
+        }
+      }
+      setMesLivraisons(allLivs);
     }
     setLoading(false);
   }
@@ -279,13 +314,16 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
 
   async function updateStatut(livraisonId, statut) {
     const updateData = { statut, updated_at: new Date().toISOString() };
+    if (statut === 'acceptee') {
+      updateData.livreur_id = user.id;
+    }
     if (statut === 'en_cours' && !mesLivraisons.find(l => l.id === livraisonId)?.qr_token) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let token = 'KBL-';
       for (let i = 0; i < 8; i++) token += chars[Math.floor(Math.random() * chars.length)];
       updateData.qr_token = token;
     }
-    const { data: liv } = await supabase.from('livraisons').update(updateData).eq('id', livraisonId).select('acheteur_id, prix_estime').single();
+    const { data: liv } = await supabase.from('livraisons').update(updateData).eq('id', livraisonId).select('acheteur_id, prix_estime, ville_ramassage, ville_livraison').single();
     if (statut === 'livree' && monProfil) {
       await supabase.from('livreurs').update({ total_livraisons: (monProfil.total_livraisons || 0) + 1 }).eq('id', user.id);
     }
@@ -297,7 +335,7 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
           p_user_id: liv.acheteur_id,
           p_type: 'livraison',
           p_title: `Livraison ${label}`,
-          p_body: `Votre commande de ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA est ${label}`,
+          p_body: `${liv.ville_ramassage} → ${liv.ville_livraison} • ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA`,
           p_data: JSON.stringify({ livraison_id: livraisonId, statut })
         });
       } catch (_) {}
@@ -521,20 +559,31 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
                   ))}
                 </div>
               )}
-              {mesLivs.map(l => (
+              {mesLivs.filter(l => l.statut === 'en_attente' && l.livreur_id !== user.id).length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div className="section-title" style={{ marginBottom: 12 }}>
+                    <div className="section-title-bar" /> 📢 Demandes disponibles ({mesLivs.filter(l => l.statut === 'en_attente' && l.livreur_id !== user.id).length})
+                  </div>
+                </div>
+              )}
+              {mesLivs.map(l => {
+                const isAvailable = l.statut === 'en_attente' && l.livreur_id !== user.id;
+                return (
                 <motion.div key={l.id} className="livraison-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -2, borderColor: 'rgba(57,211,83,0.2)' }}
                   onClick={() => onShowLivraisonDetail && onShowLivraisonDetail(l.id)}
-                  style={{ cursor: 'pointer' }}>
+                  style={{ cursor: 'pointer', borderLeft: isAvailable ? '3px solid var(--or)' : undefined }}>
                   <div className="livraison-card-top">
-                    <span className="livraison-annonce">{l.annonces?.titre || 'Livraison'}</span>
+                    <span className="livraison-annonce">
+                      {isAvailable && '📢 '}{l.annonces?.titre || 'Livraison'}
+                      {l.acheteur_id === user.id && <span className="badge badge-info" style={{ marginLeft: 6, fontSize: 9 }}>Mon colis</span>}
+                    </span>
                     <span className="livraison-statut" style={{ color: STATUT_LIVRAISON[l.statut]?.color }}>
                       {STATUT_LIVRAISON[l.statut]?.icon} {STATUT_LIVRAISON[l.statut]?.label}
                     </span>
                   </div>
                   <div className="livraison-card-body">
                     <span><MapPin size={12} /> {l.ville_ramassage} → {l.ville_livraison}</span>
-                    <span><Phone size={12} /> {l.contact_destinataire}</span>
                     <span><DollarSign size={12} /> {l.prix_estime?.toLocaleString()} FCFA</span>
                   </div>
                   {l.statut === 'en_attente' && (
@@ -572,7 +621,8 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
                     </div>
                   )}
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
