@@ -123,6 +123,8 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     photo_url: '',
   });
   const [saving, setSaving] = useState(false);
+  const [sentOk, setSentOk] = useState(false);
+  const [sentError, setSentError] = useState('');
   const tarifKm = 200;
 
   function calcEstime() {
@@ -134,7 +136,8 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    const { data: newLiv } = await supabase.from('livraisons').insert({
+    setSentError('');
+    const { data: newLiv, error: insertErr } = await supabase.from('livraisons').insert({
       annonce_id: annonceId || null,
       acheteur_id: user.id,
       adresse_ramassage: form.adresse_ramassage,
@@ -147,6 +150,12 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
       prix_estime: calcEstime(),
       photo_url: form.photo_url || null,
     }).select('id').single();
+
+    if (insertErr) {
+      setSaving(false);
+      setSentError('Erreur: ' + insertErr.message);
+      return;
+    }
 
     if (newLiv) {
       try {
@@ -173,82 +182,126 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     }
 
     setSaving(false);
-    onClose(true);
+    setSentOk(true);
+    setTimeout(() => { onClose(true); }, 2000);
   }
 
   return (
-    <div className="modal-overlay" onClick={() => onClose()} style={{ zIndex: 600 }}>
+    <div className="modal-overlay" onClick={() => !saving && onClose()} style={{ zIndex: 600 }}>
       <motion.div className="modal" onClick={e => e.stopPropagation()}
         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         style={{ maxWidth: 500 }}
       >
-        <div className="modal-header">
-          <h3><Truck size={18} style={{ marginRight: 8, display: 'inline' }} /> Demander une livraison</h3>
-          <button className="modal-close" onClick={() => onClose()}>×</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            <div className="form-group">
-              <label className="form-label">Adresse de ramassage</label>
-              <input className="form-control" required value={form.adresse_ramassage}
-                onChange={e => setForm(f => ({ ...f, adresse_ramassage: e.target.value }))}
-                placeholder="Adresse où récupérer le colis" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Ville de ramassage</label>
-              <select className="form-control" value={form.ville_ramassage}
-                onChange={e => setForm(f => ({ ...f, ville_ramassage: e.target.value }))}>
-                {VILLES.map(v => <option key={v}>{v}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Adresse de livraison</label>
-              <input className="form-control" required value={form.adresse_livraison}
-                onChange={e => setForm(f => ({ ...f, adresse_livraison: e.target.value }))}
-                placeholder="Adresse de destination" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Ville de livraison</label>
-              <select className="form-control" value={form.ville_livraison}
-                onChange={e => setForm(f => ({ ...f, ville_livraison: e.target.value }))}>
-                {VILLES.map(v => <option key={v}>{v}</option>)}
-              </select>
-            </div>
-            <div className="card-surface" style={{ margin: '0 0 16px', padding: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--or)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Calculator size={14} /> Estimation du prix
-              </div>
-              <CalculettePrix villeRamassage={form.ville_ramassage} villeLivraison={form.ville_livraison} tarifKm={tarifKm} />
-            </div>
-            <div className="two-col">
-              <div className="form-group">
-                <label className="form-label">Contact expéditeur</label>
-                <input className="form-control" required value={form.contact_expediteur}
-                  onChange={e => setForm(f => ({ ...f, contact_expediteur: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Contact destinataire</label>
-                <input className="form-control" required value={form.contact_destinataire}
-                  onChange={e => setForm(f => ({ ...f, contact_destinataire: e.target.value }))}
-                  placeholder="Téléphone du destinataire" />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Description du colis</label>
-              <textarea className="form-control" rows={2} value={form.description_colis}
-                onChange={e => setForm(f => ({ ...f, description_colis: e.target.value }))}
-                placeholder="Poids, dimensions, contenu..." />
-            </div>
+        {sentOk ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}
+              style={{
+                width: 80, height: 80, borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--vert), var(--vert-dark))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 20px', boxShadow: '0 8px 30px rgba(57,211,83,0.4)',
+              }}>
+              <CheckCircle size={40} color="white" />
+            </motion.div>
+            <motion.h3 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              style={{ color: 'var(--vert)', marginBottom: 8, fontSize: 20 }}>
+              Demande envoyée !
+            </motion.h3>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 4 }}>
+              {form.ville_ramassage} → {form.ville_livraison}
+            </motion.p>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              style={{ color: 'var(--or)', fontSize: 16, fontWeight: 700 }}>
+              {calcEstime().toLocaleString()} FCFA
+            </motion.p>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+              style={{ marginTop: 16, color: 'var(--text3)', fontSize: 12 }}>
+              ✅ Les coursiers disponibles sont notifiés en temps réel
+            </motion.div>
           </div>
-          <div className="modal-footer">
-            <motion.button type="button" className="btn btn-ghost" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={() => onClose()}>Annuler</motion.button>
-            <motion.button type="submit" className="btn btn-primary" disabled={saving}
-              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              {saving ? 'Envoi...' : `Demander (${calcEstime().toLocaleString()} FCFA)`}
-            </motion.button>
-          </div>
-        </form>
+        ) : (
+          <>
+            <div className="modal-header">
+              <h3><Truck size={18} style={{ marginRight: 8, display: 'inline' }} /> Demander une livraison</h3>
+              <button className="modal-close" onClick={() => onClose()}>×</button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="modal-body">
+                {sentError && (
+                  <div style={{
+                    background: 'rgba(255,71,87,0.1)', border: '1px solid rgba(255,71,87,0.3)',
+                    borderRadius: 10, padding: 12, marginBottom: 16, color: 'var(--danger)', fontSize: 13,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <XCircle size={16} /> {sentError}
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">Adresse de ramassage</label>
+                  <input className="form-control" required value={form.adresse_ramassage}
+                    onChange={e => setForm(f => ({ ...f, adresse_ramassage: e.target.value }))}
+                    placeholder="Adresse où récupérer le colis" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ville de ramassage</label>
+                  <select className="form-control" value={form.ville_ramassage}
+                    onChange={e => setForm(f => ({ ...f, ville_ramassage: e.target.value }))}>
+                    {VILLES.map(v => <option key={v}>{v}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Adresse de livraison</label>
+                  <input className="form-control" required value={form.adresse_livraison}
+                    onChange={e => setForm(f => ({ ...f, adresse_livraison: e.target.value }))}
+                    placeholder="Adresse de destination" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ville de livraison</label>
+                  <select className="form-control" value={form.ville_livraison}
+                    onChange={e => setForm(f => ({ ...f, ville_livraison: e.target.value }))}>
+                    {VILLES.map(v => <option key={v}>{v}</option>)}
+                  </select>
+                </div>
+                <div className="card-surface" style={{ margin: '0 0 16px', padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--or)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Calculator size={14} /> Estimation du prix
+                  </div>
+                  <CalculettePrix villeRamassage={form.ville_ramassage} villeLivraison={form.ville_livraison} tarifKm={tarifKm} />
+                </div>
+                <div className="two-col">
+                  <div className="form-group">
+                    <label className="form-label">Contact expéditeur</label>
+                    <input className="form-control" required value={form.contact_expediteur}
+                      onChange={e => setForm(f => ({ ...f, contact_expediteur: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Contact destinataire</label>
+                    <input className="form-control" required value={form.contact_destinataire}
+                      onChange={e => setForm(f => ({ ...f, contact_destinataire: e.target.value }))}
+                      placeholder="Téléphone du destinataire" />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Description du colis</label>
+                  <textarea className="form-control" rows={2} value={form.description_colis}
+                    onChange={e => setForm(f => ({ ...f, description_colis: e.target.value }))}
+                    placeholder="Poids, dimensions, contenu..." />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <motion.button type="button" className="btn btn-ghost" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => onClose()}>Annuler</motion.button>
+                <motion.button type="submit" className="btn btn-primary" disabled={saving}
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                  {saving ? '⏳ Envoi en cours...' : `Demander (${calcEstime().toLocaleString()} FCFA)`}
+                </motion.button>
+              </div>
+            </form>
+          </>
+        )}
       </motion.div>
     </div>
   );
