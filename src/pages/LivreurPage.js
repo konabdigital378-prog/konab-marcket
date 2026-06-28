@@ -156,8 +156,16 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
     const { data: newLiv, error: insertErr } = await supabase.from('livraisons').insert(insertData).select('id').single();
 
     if (insertErr) {
+      console.error('INSERT ERR:', insertErr);
       setSaving(false);
-      setSentError('Erreur: ' + insertErr.message);
+      setSentError('Erreur insertion: ' + insertErr.message);
+      return;
+    }
+
+    if (!newLiv || !newLiv.id) {
+      console.error('INSERT: no data returned, insertErr:', insertErr);
+      setSaving(false);
+      setSentError('Erreur: la demande n\'a pas été enregistrée. Réessayez.');
       return;
     }
 
@@ -389,10 +397,12 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
       const { data: mp } = await supabase.from('livreurs').select('*').eq('id', user.id).maybeSingle();
       if (mp) setMonProfil(mp);
 
-      const { data: mesLivs } = await supabase.from('livraisons')
+      const { data: mesLivs, error: livErr } = await supabase.from('livraisons')
         .select('*, annonces(titre)')
         .or(`acheteur_id.eq.${user.id},livreur_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
+
+      if (livErr) console.error('Erreur chargement livraisons:', livErr.message);
 
       let allLivs = mesLivs || [];
 
@@ -500,7 +510,7 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
     );
   }
 
-  const mesLivs = mesLivraisons.filter(l => l.livreur_id === user.id);
+  const mesLivs = mesLivraisons.filter(l => l.livreur_id === user.id || l.acheteur_id === user.id);
   const mesCmd = mesLivraisons.filter(l => l.acheteur_id === user.id);
   const enAttenteCount = mesLivs.filter(l => l.statut === 'en_attente').length;
 
