@@ -1,10 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, User, Plus, Calculator, ExternalLink, Search, Crosshair, QrCode } from 'lucide-react';
+import { ArrowLeft, Bike, Truck, MapPin, Package, CheckCircle, XCircle, Clock, DollarSign, Star, User, Plus, Calculator, ExternalLink, Search, Crosshair, QrCode, Bell } from 'lucide-react';
 import { supabase, haversine, VILLES_COORDS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { SkeletonCards } from '../components/Skeleton';
 import { DeliveryCard } from '../components/DeliveryCard';
+
+function playNewDeliverySound() {
+  try {
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+    osc1.frequency.setValueAtTime(660, now);
+    osc1.frequency.setValueAtTime(880, now + 0.1);
+    osc1.frequency.setValueAtTime(1100, now + 0.2);
+    osc2.frequency.setValueAtTime(330, now);
+    osc2.frequency.setValueAtTime(440, now + 0.1);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+    osc1.start(now);
+    osc1.stop(now + 0.5);
+    osc2.start(now);
+    osc2.stop(now + 0.5);
+  } catch (_) {}
+}
 
 const TYPE_VEHICULES = [
   { value: 'moto', label: 'Moto / Scooter', icon: '🏍️' },
@@ -126,16 +154,22 @@ function RequestDeliveryModal({ onClose, annonceId, prefillVille }) {
           .select('id')
           .eq('disponible', true);
         if (livreursDispo && livreursDispo.length > 0) {
-          const notifPromises = livreursDispo.map(l =>
-            supabase.rpc('creer_notification', {
-              p_user_id: l.id,
-              p_type: 'livraison',
-              p_title: 'Nouvelle demande de livraison',
-              p_body: `${form.ville_ramassage} → ${form.ville_livraison} • ${calcEstime().toLocaleString()} FCFA`,
-              p_data: { livraison_id: newLiv.id, statut: 'en_attente' }
-            })
-          );
-          await Promise.all(notifPromises);
+          const notifPayload = livreursDispo.map(l => ({
+            user_id: l.id,
+            type: 'livraison',
+            title: '📢 Nouvelle demande de livraison',
+            body: `${form.ville_ramassage} → ${form.ville_livraison} • ${calcEstime().toLocaleString()} FCFA`,
+            data: { livraison_id: newLiv.id, statut: 'en_attente' },
+          }));
+          await supabase.from('notifications').insert(notifPayload);
+          const { error: rpcErr } = await supabase.rpc('creer_notification', {
+            p_user_id: livreursDispo[0]?.id,
+            p_type: 'livraison',
+            p_title: '📢 Nouvelle demande',
+            p_body: `${form.ville_ramassage} → ${form.ville_livraison}`,
+            p_data: { livraison_id: newLiv.id, statut: 'en_attente' }
+          });
+          if (rpcErr) console.log('RPC fallback:', rpcErr.message);
         }
       } catch (e) { console.error('notif erreur:', e); }
     }
@@ -236,11 +270,33 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
   const [searchVille, setSearchVille] = useState('');
   const [userCoords, setUserCoords] = useState(null);
   const [locating, setLocating] = useState(false);
+  const [newDeliveryAlert, setNewDeliveryAlert] = useState(null);
+  const [notifCount, setNotifCount] = useState(0);
+  const seenDeliveryIds = useRef(new Set());
+  const alertTimeout = useRef(null);
+
+  const playSoundAndShowAlert = useCallback((livraison) => {
+    playNewDeliverySound();
+    setNewDeliveryAlert(livraison);
+    setNotifCount(c => c + 1);
+    if (alertTimeout.current) clearTimeout(alertTimeout.current);
+    alertTimeout.current = setTimeout(() => setNewDeliveryAlert(null), 8000);
+  }, []);
 
   useEffect(() => {
     loadData();
     const sub = supabase.channel('livraisons_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'livraisons' }, () => loadData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'livraisons' }, (payload) => {
+        const newLiv = payload.new;
+        if (newLiv && newLiv.statut === 'en_attente' && !newLiv.livreur_id && newLiv.acheteur_id !== user?.id) {
+          if (!seenDeliveryIds.current.has(newLiv.id)) {
+            seenDeliveryIds.current.add(newLiv.id);
+            playSoundAndShowAlert(newLiv);
+          }
+        }
+        loadData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'livraisons' }, () => loadData())
       .subscribe();
     return () => supabase.removeChannel(sub);
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -333,12 +389,12 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
     if (liv) {
       try {
         const label = { acceptee: 'acceptée', en_cours: 'en cours de livraison', livree: 'livrée', annulee: 'annulée' }[statut] || statut;
-        await supabase.rpc('creer_notification', {
-          p_user_id: liv.acheteur_id,
-          p_type: 'livraison',
-          p_title: `Livraison ${label}`,
-          p_body: `${liv.ville_ramassage} → ${liv.ville_livraison} • ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA`,
-          p_data: { livraison_id: livraisonId, statut }
+        await supabase.from('notifications').insert({
+          user_id: liv.acheteur_id,
+          type: 'livraison',
+          title: `Livraison ${label}`,
+          body: `${liv.ville_ramassage} → ${liv.ville_livraison} • ${(liv.prix_estime || 0).toLocaleString('fr-FR')} FCFA`,
+          data: { livraison_id: livraisonId, statut }
         });
       } catch (e) { console.error('notif erreur:', e); }
     }
@@ -387,11 +443,12 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
           <div className="stat-label">Coursiers dispo</div>
         </motion.div>
         <motion.div className="stat-card" whileHover={{ y: -2 }}
-          onClick={() => setTab('mes_livraisons')} style={{ cursor: 'pointer' }}>
+          onClick={() => setTab('mes_livraisons')} style={{ cursor: 'pointer', position: 'relative' }}>
           <Truck size={20} style={{ color: 'var(--or)', margin: '0 auto 8px' }} />
           <div className="stat-num or">{mesCmd.length + mesLivs.length}</div>
           <div className="stat-label">Mes livraisons</div>
           {enAttenteCount > 0 && <div className="badge badge-danger" style={{ marginTop: 4 }}>{enAttenteCount} en attente</div>}
+          {notifCount > 0 && <div className="badge badge-danger" style={{ position: 'absolute', top: 6, right: 6, fontSize: 10, padding: '2px 7px' }}>{notifCount}</div>}
         </motion.div>
         <motion.div className="stat-card" whileHover={{ y: -2 }}
           onClick={() => { setTab('demander'); setShowRequest(true); }} style={{ cursor: 'pointer' }}>
@@ -406,6 +463,65 @@ export default function LivreurPage({ onBack, onShowLivraisonDetail, initialDeli
           <div className="stat-label">Ma note</div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {newDeliveryAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(248,156,28,0.15), rgba(245,183,0,0.08))',
+              border: '1px solid rgba(245,183,0,0.3)',
+              borderRadius: 14,
+              padding: '14px 18px',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              cursor: 'pointer',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+            onClick={() => {
+              setTab('mes_livraisons');
+              setNewDeliveryAlert(null);
+              setNotifCount(0);
+            }}
+          >
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, var(--or), var(--vert), var(--or))' }} />
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: 'linear-gradient(135deg, var(--or), #F89C1C)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Bell size={22} color="white" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, color: 'var(--or)', fontSize: 14, marginBottom: 2 }}>
+                📢 Nouvelle demande de livraison !
+              </div>
+              <div style={{ color: 'var(--text2)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {newDeliveryAlert.ville_ramassage} → {newDeliveryAlert.ville_livraison} • {(newDeliveryAlert.prix_estime || 0).toLocaleString()} FCFA
+              </div>
+            </div>
+            <motion.button
+              className="btn btn-primary btn-sm"
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setTab('mes_livraisons');
+                setNewDeliveryAlert(null);
+                setNotifCount(0);
+              }}
+              style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              Voir →
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="tabs">
         <button className={`tab-btn ${tab === 'disponibles' ? 'active' : ''}`} onClick={() => setTab('disponibles')}>
