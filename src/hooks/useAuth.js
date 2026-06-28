@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, ADMIN_EMAIL } from '../supabase';
+import { supabase, ADMIN_EMAIL, FORMULAS } from '../supabase';
 
 const AuthContext = createContext({});
 
@@ -65,11 +65,24 @@ export function AuthProvider({ children }) {
   }
 
   const maxAnnonces = () => {
-    if (!profile) return 10;
-    if (profile.abonnement === 'certified') return 200;
-    if (profile.abonnement === 'premium')   return 50;
-    return 10;
+    if (!profile) return FORMULAS.basic.maxAnnonces;
+    return FORMULAS[profile.abonnement]?.maxAnnonces || FORMULAS.basic.maxAnnonces;
   };
+
+  const maxPhotos = () => {
+    if (!profile) return FORMULAS.basic.maxPhotos;
+    return FORMULAS[profile.abonnement]?.maxPhotos || FORMULAS.basic.maxPhotos;
+  };
+
+  const planLevel = () => {
+    if (!profile) return 0;
+    if (profile.abonnement === 'certified') return 2;
+    if (profile.abonnement === 'premium') return 1;
+    return 0;
+  };
+
+  const isPremium = () => planLevel() >= 1;
+  const isCertified = () => planLevel() >= 2;
 
   const abonnementActif = () => {
     if (!profile?.abonnement_expire) return profile?.abonnement === 'basic';
@@ -80,7 +93,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, profile, loading, isAdmin,
       signUp, signIn, signOut, refreshProfile,
-      maxAnnonces, abonnementActif
+      maxAnnonces, maxPhotos, planLevel, isPremium, isCertified, abonnementActif
     }}>
       {children}
     </AuthContext.Provider>

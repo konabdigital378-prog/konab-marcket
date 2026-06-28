@@ -101,7 +101,13 @@ export function AnnonceCard({ annonce, onInterest, onEdit, onDelete, isOwner, on
         </div>
       )}
 
-      {promoBadge && !annonce.profiles?.certifie && (
+      {!annonce.profiles?.certifie && annonce.profiles?.abonnement === 'premium' && (
+        <div className="product-card-badge" style={{ background: 'linear-gradient(135deg, #D97706, #F59E0B)' }}>
+          ⚡ Premium
+        </div>
+      )}
+
+      {promoBadge && !annonce.profiles?.certifie && annonce.profiles?.abonnement !== 'premium' && (
         <div className="product-card-badge" style={{ background: 'linear-gradient(135deg, var(--orange), #e06000)' }}>
           {promoBadge.text}
         </div>

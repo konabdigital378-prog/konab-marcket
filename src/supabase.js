@@ -11,9 +11,12 @@ export const ADMIN_WHATSAPP = process.env.REACT_APP_ADMIN_WHATSAPP || '226654137
 
 export const USSD_CODE = '*144*10*65413799';
 export const FORMULAS = {
-  basic: { name: 'Basique', price: 0, maxAnnonces: 10, color: '#6B7280', badge: 'Gratuit' },
-  premium: { name: 'Premium', price: 2000, maxAnnonces: 50, color: '#D97706', badge: '2 000 FCFA/mois' },
-  certified: { name: 'Certifié Entreprise', price: 5000, maxAnnonces: 200, color: '#059669', badge: '5 000 FCFA/mois', entreprise: true },
+  basic: { name: 'Basique', price: 0, maxAnnonces: 10, maxPhotos: 3, color: '#6B7280', badge: 'Gratuit',
+    features: ['10 annonces max', '3 photos par annonce', 'Contact WhatsApp', 'Profil public', 'Recherche standard'] },
+  premium: { name: 'Premium', price: 2000, maxAnnonces: 50, maxPhotos: 8, color: '#D97706', badge: '2 000 FCFA/mois',
+    features: ['50 annonces', '8 photos par annonce', 'Annonces mises en avant', 'Badge Premium doré', 'Statistiques de vues', 'Support prioritaire'] },
+  certified: { name: 'Certifié Entreprise', price: 5000, maxAnnonces: 200, maxPhotos: 15, color: '#059669', badge: '5 000 FCFA/mois', entreprise: true,
+    features: ['200 annonces', '15 photos par annonce', 'Page entreprise dédiée', 'Priorité dans les résultats', 'Badge Certifié vert', 'Stats avancées', 'Support VIP'] },
 };
 
 export const SECTEURS = [

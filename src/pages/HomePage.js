@@ -122,11 +122,20 @@ export default function HomePage({ onShowAuth, onShowCreate, onShowDetail, onSho
   }, []);
 
   const sortedAnnonces = useMemo(() => {
-    if (sortBy !== 'distance' || !userCoords) return annonces;
-    return [...annonces].sort((a, b) => {
-      const distA = a.latitude && a.longitude ? haversine(userCoords.lat, userCoords.lng, a.latitude, a.longitude) : Infinity;
-      const distB = b.latitude && b.longitude ? haversine(userCoords.lat, userCoords.lng, b.latitude, b.longitude) : Infinity;
-      return distA - distB;
+    let sorted = annonces;
+    if (sortBy === 'distance' && userCoords) {
+      sorted = [...annonces].sort((a, b) => {
+        const distA = a.latitude && a.longitude ? haversine(userCoords.lat, userCoords.lng, a.latitude, a.longitude) : Infinity;
+        const distB = b.latitude && b.longitude ? haversine(userCoords.lat, userCoords.lng, b.latitude, b.longitude) : Infinity;
+        return distA - distB;
+      });
+    }
+    const priority = { certified: 3, premium: 2, basic: 1 };
+    return [...sorted].sort((a, b) => {
+      const pa = priority[a.profiles?.abonnement] || 0;
+      const pb = priority[b.profiles?.abonnement] || 0;
+      if (pb !== pa) return pb - pa;
+      return 0;
     });
   }, [annonces, sortBy, userCoords]);
 

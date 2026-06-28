@@ -77,7 +77,8 @@ function VilleGrid({ selected, onSelect }) {
 }
 
 export default function AnnonceModal({ annonce, onClose, onSaved }) {
-  const { user, profile } = useAuth();
+  const { user, profile, maxPhotos } = useAuth();
+  const maxImg = maxPhotos();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     type: 'offre', titre: '', description: '', prix: '',
@@ -115,7 +116,7 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     const total = imgFiles.length + files.length;
-    if (total > 5) { setError(`Maximum 5 images (${total} sélectionnées)`); return; }
+    if (total > maxImg) { setError(`Maximum ${maxImg} images avec votre formule (${total} sélectionnées). Passez en Premium pour plus !`); return; }
     const oversized = files.find(f => f.size > 8 * 1024 * 1024);
     if (oversized) { setError(`Image "${oversized.name}" trop lourde (max 8MB)`); return; }
     setImgFiles(prev => [...prev, ...files]);
@@ -280,7 +281,7 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
       </div>
       <div className="form-group">
         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, textTransform: 'none', letterSpacing: 0 }}>
-          <span style={{ fontSize: 20 }}>🖼️</span> Photos <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 4, fontSize: 12 }}>({imgPreviews.length}/5)</span>
+          <span style={{ fontSize: 20 }}>🖼️</span> Photos <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 4, fontSize: 12 }}>({imgPreviews.length}/{maxImg})</span>
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
           {imgPreviews.map((url, i) => (
@@ -305,7 +306,7 @@ export default function AnnonceModal({ annonce, onClose, onSaved }) {
               )}
             </div>
           ))}
-          {imgPreviews.length < 5 && (
+          {imgPreviews.length < maxImg && (
             <label style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', border: '2px dashed rgba(255,255,255,0.15)', borderRadius: 14,

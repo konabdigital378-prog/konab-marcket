@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image as ImageIcon, Camera } from 'lucide-react';
+import { Package, TrendingUp, Crown, User, Plus, CreditCard, BarChart3, Settings, Heart, X, Eye, MessageCircle, MapPin, Phone, Truck, Edit2, Trash2, Clock, Image as ImageIcon, Camera, Star } from 'lucide-react';
 import { supabase, FORMULAS } from '../supabase';
 import { useAuth } from '../hooks/useAuth';
 import { AnnonceCard } from '../components/AnnonceCard';
@@ -358,56 +358,131 @@ export default function DashboardPage({ onShowCreate }) {
             <div>
               <div className="section-title" style={{ marginBottom: 20 }}>
                 <div className="section-title-bar" />
-                <BarChart3 size={20} /> Statistiques avancées
+                <BarChart3 size={20} /> Statistiques {formuleKey === 'basic' ? '(Basique)' : formuleKey === 'premium' ? 'Premium ⚡' : 'Entreprise ⭐'}
               </div>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
-                    <Eye size={20} style={{ color: 'var(--vert)' }} />
-                  </div>
-                  <div className="stat-num vert">{totalVues}</div>
-                  <div className="stat-label">Vues totales</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(245,183,0,0.1)' }}>
-                    <Heart size={20} style={{ color: 'var(--or)' }} />
-                  </div>
-                  <div className="stat-num or">{totalFav}</div>
-                  <div className="stat-label">Favoris reçus</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
-                    <MessageCircle size={20} style={{ color: 'var(--vert)' }} />
-                  </div>
-                  <div className="stat-num vert">{totalMsg}</div>
-                  <div className="stat-label">Messages non lus</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-icon" style={{ background: 'rgba(248,156,28,0.1)' }}>
-                    <Package size={20} style={{ color: 'var(--orange)' }} />
-                  </div>
-                  <div className="stat-num or">{annonces.filter(a => a.actif).length}</div>
-                  <div className="stat-label">Annonces actives</div>
-                </div>
-              </div>
-              <div className="card-surface">
-                <div className="card-surface-title"><TrendingUp size={18} /> Performance par annonce</div>
-                {annonces.length === 0 ? (
-                  <p style={{ color: 'var(--text3)', fontSize: 14 }}>Aucune donnée disponible.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {annonces.slice(0, 10).map(a => (
-                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'white' }}>{a.titre}</div>
-                        <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text3)' }}>
-                          <span><Eye size={13} style={{ display: 'inline' }} /> {a.vues || 0}</span>
-                          <span className={`badge ${a.actif ? 'badge-success' : 'badge-danger'}`}>{a.actif ? 'Actif' : 'Inactif'}</span>
-                        </div>
+              {formuleKey === 'basic' ? (
+                <div>
+                  <div className="stats-grid">
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
+                        <Eye size={20} style={{ color: 'var(--vert)' }} />
                       </div>
-                    ))}
+                      <div className="stat-num vert">{totalVues}</div>
+                      <div className="stat-label">Vues totales</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(248,156,28,0.1)' }}>
+                        <Package size={20} style={{ color: 'var(--orange)' }} />
+                      </div>
+                      <div className="stat-num or">{annonces.filter(a => a.actif).length}</div>
+                      <div className="stat-label">Annonces actives</div>
+                    </div>
                   </div>
-                )}
-              </div>
+                  <motion.div className="card-surface" style={{ textAlign: 'center', padding: 28, border: '1px dashed rgba(217,119,6,0.3)', marginTop: 20 }}
+                    whileHover={{ y: -3 }}>
+                    <Crown size={36} style={{ color: 'var(--or)', marginBottom: 12 }} />
+                    <h3 style={{ color: 'white', marginBottom: 8 }}>Débloquez les stats avancées</h3>
+                    <p style={{ color: 'var(--text2)', marginBottom: 16, fontSize: 14 }}>Passez en Premium pour accéder aux statistiques détaillées, graphiques de performance et rapports hebdomadaires.</p>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <span className="badge badge-warning">📈 Graphiques de vues</span>
+                      <span className="badge badge-warning">📊 Taux de conversion</span>
+                      <span className="badge badge-warning">📅 Rapports hebdo</span>
+                      <span className="badge badge-warning">🏆 Top annonces</span>
+                    </div>
+                  </motion.div>
+                </div>
+              ) : (
+                <div>
+                  <div className="stats-grid">
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
+                        <Eye size={20} style={{ color: 'var(--vert)' }} />
+                      </div>
+                      <div className="stat-num vert">{totalVues}</div>
+                      <div className="stat-label">Vues totales</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(245,183,0,0.1)' }}>
+                        <Heart size={20} style={{ color: 'var(--or)' }} />
+                      </div>
+                      <div className="stat-num or">{totalFav}</div>
+                      <div className="stat-label">Favoris reçus</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
+                        <MessageCircle size={20} style={{ color: 'var(--vert)' }} />
+                      </div>
+                      <div className="stat-num vert">{totalMsg}</div>
+                      <div className="stat-label">Messages non lus</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(248,156,28,0.1)' }}>
+                        <Package size={20} style={{ color: 'var(--orange)' }} />
+                      </div>
+                      <div className="stat-num or">{annonces.filter(a => a.actif).length}</div>
+                      <div className="stat-label">Annonces actives</div>
+                    </div>
+                  </div>
+                  <div className="stats-grid" style={{ marginTop: 16 }}>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(57,211,83,0.1)' }}>
+                        <TrendingUp size={20} style={{ color: 'var(--vert)' }} />
+                      </div>
+                      <div className="stat-num vert">{annonces.length > 0 ? (totalVues / annonces.length).toFixed(1) : 0}</div>
+                      <div className="stat-label">Vues / annonce</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: 'rgba(245,183,0,0.1)' }}>
+                        <Star size={20} style={{ color: 'var(--or)' }} />
+                      </div>
+                      <div className="stat-num or">{totalFav > 0 && totalVues > 0 ? ((totalFav / totalVues) * 100).toFixed(1) + '%' : '0%'}</div>
+                      <div className="stat-label">Taux favoris</div>
+                    </div>
+                    {formuleKey === 'certified' && (
+                      <>
+                        <div className="stat-card">
+                          <div className="stat-card-icon" style={{ background: 'rgba(5,150,105,0.1)' }}>
+                            <Star size={20} style={{ color: '#059669' }} />
+                          </div>
+                          <div className="stat-num" style={{ color: '#059669' }}>{annonces.filter(a => a.profiles?.certifie).length || annonces.length}</div>
+                          <div className="stat-label">Annonces certifiées</div>
+                        </div>
+                        <div className="stat-card">
+                          <div className="stat-card-icon" style={{ background: 'rgba(217,119,6,0.1)' }}>
+                            <Crown size={20} style={{ color: 'var(--or)' }} />
+                          </div>
+                          <div className="stat-num or">{formuleKey === 'certified' ? 'VIP' : '—'}</div>
+                          <div className="stat-label">Statut</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="card-surface" style={{ marginTop: 20 }}>
+                    <div className="card-surface-title"><TrendingUp size={18} /> Top 10 annonces par vues</div>
+                    {annonces.length === 0 ? (
+                      <p style={{ color: 'var(--text3)', fontSize: 14 }}>Aucune donnée disponible.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {[...annonces].sort((a, b) => (b.vues || 0) - (a.vues || 0)).slice(0, 10).map((a, i) => (
+                          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                            <span style={{ width: 24, height: 24, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, background: i < 3 ? 'linear-gradient(135deg, var(--or), #F89C1C)' : 'rgba(255,255,255,0.06)', color: i < 3 ? 'white' : 'var(--text3)' }}>
+                              {i + 1}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.titre}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text3)' }}>{a.ville || '—'}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--text3)', flexShrink: 0 }}>
+                              <span><Eye size={13} style={{ display: 'inline' }} /> {a.vues || 0}</span>
+                              <span className={`badge ${a.actif ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: 10 }}>{a.actif ? 'Actif' : 'Inactif'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -636,10 +711,9 @@ export default function DashboardPage({ onShowCreate }) {
                   <div className="formule-name">Basique</div>
                   <div className="formule-price" style={{ background: 'none', WebkitTextFillColor: 'var(--text2)', color: 'var(--text2)' }}>Gratuit</div>
                   <ul className="formule-features">
-                    <li><span className="feat-check">✓</span> 10 annonces max</li>
-                    <li><span className="feat-check">✓</span> Tous les types</li>
-                    <li><span className="feat-check">✓</span> Contact WhatsApp</li>
-                    <li><span className="feat-check">✓</span> Profil public</li>
+                    {FORMULAS.basic.features.map((f, i) => (
+                      <li key={i}><span className="feat-check">✓</span> {f}</li>
+                    ))}
                   </ul>
                   {formuleKey === 'basic' && <span className="badge badge-gray" style={{ justifyContent:'center', padding:'8px' }}>Actuel</span>}
                 </motion.div>
@@ -648,11 +722,9 @@ export default function DashboardPage({ onShowCreate }) {
                   <div className="formule-name">Premium</div>
                   <div className="formule-price"><sup>FCFA</sup> 2 000 <span>/ mois</span></div>
                   <ul className="formule-features">
-                    <li><span className="feat-check">✓</span> 50 annonces</li>
-                    <li><span className="feat-check">✓</span> Badge Premium</li>
-                    <li><span className="feat-check">✓</span> Mise en avant</li>
-                    <li><span className="feat-check">✓</span> Statistiques</li>
-                    <li><span className="feat-check">✓</span> Support prioritaire</li>
+                    {FORMULAS.premium.features.map((f, i) => (
+                      <li key={i}><span className="feat-check">✓</span> {f}</li>
+                    ))}
                   </ul>
                   <motion.button className="btn btn-primary btn-full" style={{ borderRadius:'var(--radius-sm)' }}
                     whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -662,15 +734,12 @@ export default function DashboardPage({ onShowCreate }) {
                 </motion.div>
                 <motion.div className={`formule-card ${formuleKey==='premium'?'featured':''}`} whileHover={{ y: -4 }}>
                   <div className="formule-icon">⭐</div>
-                  <div className="formule-name">Certifié</div>
+                  <div className="formule-name">Certifié Entreprise</div>
                   <div className="formule-price"><sup>FCFA</sup> 5 000 <span>/ mois</span></div>
                   <ul className="formule-features">
-                    <li><span className="feat-check">✓</span> 200 annonces</li>
-                    <li><span className="feat-check">✓</span> Badge Certifié</li>
-                    <li><span className="feat-check">✓</span> Page entreprise</li>
-                    <li><span className="feat-check">✓</span> Priorité résultats</li>
-                    <li><span className="feat-check">✓</span> Stats avancées</li>
-                    <li><span className="feat-check">✓</span> Tout Premium +</li>
+                    {FORMULAS.certified.features.map((f, i) => (
+                      <li key={i}><span className="feat-check">✓</span> {f}</li>
+                    ))}
                   </ul>
                   <motion.button className="btn btn-gold btn-full" style={{ borderRadius:'var(--radius-sm)' }}
                     whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
